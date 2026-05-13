@@ -9,8 +9,8 @@
 ## Статус спринта
 
 - [x] **Шаг 2.1** — модели `Document`/`Chunk`, миграция `0002_documents_and_chunks` с HNSW-индексом. Закрыт 2026-05-13.
-- [ ] **Шаг 2.2** — chunker. ← следующий
-- [ ] **Шаг 2.3** — embedding service (stub).
+- [x] **Шаг 2.2** — chunker (`app/rag/chunker.py:split_text`, 14 unit-тестов). Закрыт 2026-05-13. Сверх плана: валидации `ValueError` на `size<=0`, `overlap<0`, `overlap>=size`; реэкспорт `split_text` из `app.rag.__init__`.
+- [ ] **Шаг 2.3** — embedding service (stub). ← следующий
 - [ ] **Шаг 2.4** — парсеры TXT/MD.
 - [ ] **Шаг 2.5** — сервисный слой documents.
 - [ ] **Шаг 2.6** — API /api/documents (включая лимит 10 МБ через `settings.max_upload_bytes`).
