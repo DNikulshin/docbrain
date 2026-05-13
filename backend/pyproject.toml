@@ -1,0 +1,34 @@
+# Конфигурация инструментов backend.
+# Зависимости — в requirements.txt / requirements-dev.txt (так удобнее для Docker).
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "ASYNC",    # async best practices
+    "SIM",      # simplify
+]
+ignore = [
+    "E501",     # line-too-long — формат сам разрулит
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B008"]  # FastAPI Depends в дефолтных аргументах
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
