@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Стадия проекта
 
-Pre-implementation. На 2026-05-13 в репозитории только два документа:
-- [README.md](README.md) — продуктовый план, целевая архитектура, целевая структура каталогов, примеры тестов, шаги деплоя.
-- [INFRA.md](INFRA.md) — брифинг по VPS (`nikulshin-dev.online`): какие контейнеры уже крутятся, какая docker-сеть, где Caddy/Authelia/MinIO/Postgres, что нужно доставить под docbrain.
+Активная разработка, спринт 1 (фундамент бэкенда) закрыт 2026-05-13.
 
-Кода, `docker-compose.yml`, `Dockerfile`, миграций, тестов **ещё нет**. Перед любой реализацией свериться с этими двумя файлами — там зафиксированы все принятые решения.
+Источники истины помимо кода:
+- [README.md](README.md) — продуктовый план, целевая архитектура, целевая структура каталогов, шаги деплоя.
+- [INFRA.md](INFRA.md) — брифинг по VPS (`nikulshin-dev.online`): контейнеры, docker-сеть, Caddy/Authelia/MinIO/Postgres.
 
 ## Цель
 
@@ -45,23 +45,30 @@ FastAPI ─исходники──▶ MinIO (бакет docbrain-files, сущ�
 
 ## Команды разработки
 
-> На момент 2026-05-13 ни одна из этих команд ещё не работает — их предстоит создать. Команды приведены как **целевые**, согласно README.md.
+Локально pip/python3 в code-server'е недоступны (pip отсутствует, Python 3.13) — **все backend-команды гоняем внутри контейнера**.
 
-Backend (Python 3.11, FastAPI):
-- `pip install -r backend/requirements.txt` — установка
-- `pytest backend/tests` — все тесты
-- `pytest backend/tests/test_rag.py::test_search_similar` — один тест
-- `pytest backend/tests --cov=app` — с покрытием (как в CI)
-- Миграции: `alembic` в `backend/alembic/`
+Стек:
+- `docker-compose up -d --build` — поднять стек (docker-compose V1, V2 не установлен)
+- `docker-compose logs -f docbrain-backend` — логи бэкенда
+- `docker-compose down` — остановить
 
-Frontend (Node 20, Next.js 15):
-- `cd frontend && npm ci` — установка
-- `cd frontend && npm test` — Jest + React Testing Library
-- `cd frontend && npm run dev` — dev-сервер
+Backend (внутри контейнера):
+- `docker-compose exec docbrain-backend sh -c "cd /app && pytest -v"` — тесты
+- `docker-compose exec docbrain-backend sh -c "cd /app && pytest tests/test_health.py::test_health_returns_ok"` — один тест
+- `docker-compose exec docbrain-backend sh -c "cd /app && ruff check . && ruff format --check ."` — линт
+- `docker-compose exec docbrain-backend sh -c "cd /app && ruff format ."` — автоформат
+- `docker-compose exec docbrain-backend sh -c "cd /app && alembic current"` — текущая ревизия БД
+- `docker-compose exec docbrain-backend sh -c "cd /app && alembic revision -m 'msg'"` — новая ручная миграция
+- `alembic upgrade head` запускается автоматически при старте контейнера (`docker-entrypoint.sh`)
 
-Стек целиком (на VPS):
-- `cd /home/coder/projects/docbrain && docker-compose up -d --build` — поднять backend/web/db/n8n
-- `docker logs docbrain-backend -f` / `docker logs docbrain-n8n` — логи
+Проверка endpoint'ов (backend в proxy-сети, порт наружу не выставлен):
+- `docker run --rm --network home-codespaces_proxy curlimages/curl:latest -s http://docbrain-backend:8000/health`
+- `docker run --rm --network home-codespaces_proxy curlimages/curl:latest -s http://docbrain-backend:8000/health/db`
+
+Postgres напрямую:
+- `docker exec docbrain-db psql -U docbrain -d docbrain -c "..."`
+
+Frontend (будет позже): `cd frontend && npm ci && npm run dev`.
 
 Caddy после правки `/opt/home-codespaces/Caddyfile`:
 - `docker exec home-codespaces-caddy-1 caddy reload --config /etc/caddy/Caddyfile`
@@ -85,35 +92,47 @@ Caddy после правки `/opt/home-codespaces/Caddyfile`:
 ## Принятые решения (с датами)
 
 - **2026-05-13** — Зафиксирована целевая архитектура и стек (см. README.md, INFRA.md).
-- **2026-05-13** — Выбран **вариант 2** из INFRA.md §3: отдельный `docbrain-db` на `pgvector/pgvector:pg16`, чтобы не ломать scan-agent.
+- **2026-05-13** — Выбран **вариант 2** из INFRA.md §3: отдельный `docbrain-db` на `pgvector/pgvector:pg16` — БД, созданная ранее в `postgres-provision`, не используется (pgvector там недоступен, см. нюанс ниже).
 - **2026-05-13** — Авторизация веб-чата: **JWT в FastAPI**, не Authelia.
 - **2026-05-13** — n8n: **pull-mode** каждые 6ч из Google Drive.
 - **2026-05-13** — OpenRouter: **один ключ на сервис** (single-tenant на старте).
+- **2026-05-13** — Conventional Commits, ruff (lint+format) как единый линтер Python.
+- **2026-05-13** — SQLAlchemy 2.x async + asyncpg, alembic в async-режиме (target_metadata=None, миграции пишем вручную пока нет моделей).
+- **2026-05-13** — Миграции применяются автоматически в `docker-entrypoint.sh` (alembic upgrade head перед uvicorn).
 
 ## Что сделано
 
-- Описаны архитектура и план реализации (README.md).
-- Описана целевая VPS-инфра и интеграция (INFRA.md).
+- Спринт 1 (фундамент бэкенда):
+  - git-репозиторий, `.gitignore` (с защитой `.env`), Conventional Commits.
+  - `docker-compose.yml`: docbrain-db (pgvector/pgvector:pg16) + docbrain-backend, общая сеть `home-codespaces_proxy`.
+  - FastAPI 0.115 / Python 3.11 в Docker (dev + prod targets, --reload в dev).
+  - `GET /health` (только сервис) и `GET /health/db` (SELECT 1 + версия pgvector).
+  - SQLAlchemy async + asyncpg + alembic; baseline-миграция `0001_enable_pgvector` (CREATE EXTENSION vector → 0.8.2).
+  - 3 теста (pytest + dependency_overrides), ruff (E/W/F/I/B/UP/ASYNC/SIM).
 
 ## Что осталось (большие блоки)
 
-- Инициализировать git-репозиторий и каркас (`backend/`, `frontend/`, `n8n/`, `docker-compose.yml`, `.env.example`, `Makefile`).
-- Backend: модели, RAG-слой (embedding/vector_store/retriever), function-calling агент, API (chat/documents/import/telegram), парсеры PDF/DOCX/MD/URL, alembic-миграции.
-- Frontend: чат, админка, интеграция с API, тесты Jest.
-- n8n workflow Google Drive → `/api/import-from-n8n` (JSON в `n8n/workflows/`).
-- CI (`.github/workflows/ci.yml`) и CD (`.github/workflows/cd.yml`) по шаблону scan-agent.
-- Caddyfile: добавить блоки `docbrain.nikulshin-dev.online` и `n8n.nikulshin-dev.online`.
-- Создать MinIO-бакет `docbrain-files`.
-- Завести нового Telegram-бота и настроить webhook.
+- Эмбеддинги через OpenRouter (нужен `OPENROUTER_API_KEY` в .env), модель документов и чанков в БД (`documents`/`chunks` с `vector(N)`), retrieval + cosine, function-calling агент.
+- API: `/api/chat`, `/api/documents`, `/api/import`, `/tg/webhook`.
+- Парсеры PDF/DOCX/MD/URL, загрузка исходников в MinIO.
+- Frontend: Next.js 15, чат + админка, тесты Jest.
+- n8n workflow Google Drive → `/api/import`.
+- CI (`.github/workflows/ci.yml`) и CD через GHCR + webhook.
+- Caddyfile: блоки `docbrain.nikulshin-dev.online` и `n8n.nikulshin-dev.online`.
+- MinIO-бакет `docbrain-files`, новый Telegram-бот и его webhook.
 
 ## Нюансы / подводные камни
 
+- **`BACKEND_HOST_PATH` в .env** — обязателен на VPS code-server. docker-daemon живёт на хосте, и относительный `./backend` в compose резолвится как путь хоста, а не code-server'а. Реальное значение: `/opt/home-codespaces/projects/docbrain/backend`. На чистом dev-окружении переменную не задавать — compose возьмёт fallback `./backend`.
+- **`docker compose` (V2) не установлен** в code-server — использовать `docker-compose` (V1).
+- **`python3` есть, `pip` нет** в code-server — все Python-команды гонять только в контейнере.
+- **Bind-mount затирает executable-бит** из слоя образа. Поэтому `ENTRYPOINT ["sh", "./docker-entrypoint.sh"]` — не зависит от `chmod +x`.
 - **Telegram-webhook должен быть публичным** — без `import authelia` (Telegram не умеет SSO). Только префикс `/tg/webhook*`.
-- **pgvector в основном `postgres-provision` не установлен** — поэтому отдельный `docbrain-db`.
-- В compose **указывать `name: proxy`** в external-сети нельзя — реальное имя сети `home-codespaces_proxy`.
-- Volume mount `./backend:/app` в compose — только для разработки, в production убрать.
+- **pgvector в основном `postgres-provision` не установлен** (`postgres:16-alpine`) — поэтому отдельный `docbrain-db`.
+- В compose external-сеть пишется как `name: home-codespaces_proxy`, не `name: proxy`.
 - `TELEGRAM_BOT_TOKEN` в `/opt/home-codespaces/.env` уже занят dashboard'ом scan-agent — для docbrain ввести отдельный `DOCBRAIN_TELEGRAM_BOT_TOKEN`.
-- Открытые вопросы перечислены в INFRA.md §9 (часть уже закрыта решениями выше; перепроверить при старте реализации).
+- `Settings.database_url` обязателен → юнит-тесты подставляют фейк через `tests/conftest.py` (`os.environ.setdefault` до импортов app).
+- Старый `.env`, который указывал на `postgres-provision/db_docbrain`, сохранён в `.env.old.bak` (gitignored). Сама БД `db_docbrain` в `postgres-provision` осталась пустой — можно безопасно удалить через db-provisioner UI.
 
 ## Источники истины
 
