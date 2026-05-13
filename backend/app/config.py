@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = Field(default="development")
 
-    # На шаге 4 здесь появится database_url; сейчас он не нужен для /health.
+    database_url: str = Field(
+        ...,
+        description="Async SQLAlchemy URL, например postgresql+asyncpg://user:pass@host:5432/db",
+    )
 
 
 settings = Settings()

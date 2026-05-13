@@ -1,0 +1,9 @@
+Alembic-миграции docbrain. Запуск из каталога backend/:
+
+    alembic upgrade head           # применить все миграции
+    alembic revision -m "msg"      # новая ручная миграция
+    alembic downgrade -1           # откат на одну ревизию
+    alembic current                # текущая ревизия в БД
+
+В контейнере docbrain-backend миграции применяются автоматически при старте
+(см. docker-entrypoint.sh).

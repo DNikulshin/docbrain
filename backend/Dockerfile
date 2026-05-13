@@ -16,11 +16,15 @@ FROM base AS dev
 COPY requirements-dev.txt .
 RUN pip install -r requirements-dev.txt
 COPY . .
+RUN chmod +x docker-entrypoint.sh
 EXPOSE 8000
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # ---------- prod: только runtime ----------
 FROM base AS prod
 COPY . .
+RUN chmod +x docker-entrypoint.sh
 EXPOSE 8000
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
