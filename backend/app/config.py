@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -18,6 +20,12 @@ class Settings(BaseSettings):
         ...,
         description="Async SQLAlchemy URL, например postgresql+asyncpg://user:pass@host:5432/db",
     )
+
+    embedding_provider: Literal["stub", "openrouter"] = "stub"
+    embedding_dim: int = 1536
+    chunk_size: int = 800
+    chunk_overlap: int = 100
+    max_upload_bytes: int = 10 * 1024 * 1024
 
 
 settings = Settings()
