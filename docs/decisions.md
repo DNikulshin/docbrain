@@ -2,6 +2,12 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-13 — Готовность к спринту 2
+
+- **`OPENROUTER_API_KEY` доступен в `.env`** (положил пользователь после закрытия спринта 1). Это снимает блокер для реального RAG.
+- **Развилка спринта 2 — stub-first vs real-first.** План в [sprint-2-plan.md](sprint-2-plan.md) написан на stub-first (детерминированный `StubEmbeddingService` для тестов, потом OpenRouter). Раз ключ есть, новая сессия может пойти real-first и сразу делать OpenRouter-клиент в Шаге 2.3. Решение принимается в начале новой сессии, оба пути валидны.
+- **`.env.example` приведён в актуальное состояние** для спринта 2: добавлены `OPENROUTER_API_KEY`, `EMBEDDING_MODEL`, `CHAT_MODEL`, `EMBEDDING_PROVIDER`, `EMBEDDING_DIM`, `CHUNK_SIZE`, `CHUNK_OVERLAP`.
+
 ## 2026-05-13 — Спринт 1: фундамент бэкенда
 
 - **БД.** Отдельный контейнер `docbrain-db` на `pgvector/pgvector:pg16` (вариант 2 из [INFRA.md §3](../INFRA.md)). Старая `db_docbrain` в общем `postgres-provision` не используется — там нет расширения `vector`. Старый `.env` сохранён локально как `.env.old.bak` (gitignored).

@@ -84,6 +84,8 @@ backend/app/
 - Тесты: детерминированность, длина вектора, нормализация (||v||=1).
 - Коммит: `feat(backend): EmbeddingService Protocol + детерминированный stub`.
 
+> **Альтернатива: real-first.** `OPENROUTER_API_KEY` уже в `.env` (см. [decisions.md](decisions.md)) — можно сразу делать `OpenRouterEmbeddingService` через `httpx.AsyncClient` к `https://openrouter.ai/api/v1/embeddings`, держать `StubEmbeddingService` только как fallback для unit-тестов (через `dependency_overrides`). Решение — в начале спринта, до Шага 2.1.
+
 ### Шаг 2.4 — Парсеры
 
 - `app/parsers/base.py`: `def parse(filename: str, payload: bytes) -> str` — диспатч по расширению.
