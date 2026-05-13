@@ -13,7 +13,7 @@ graph TB
     subgraph VPS [VPS nikulshin-dev.online]
         Caddy[Caddy<br/>reverse proxy + HTTPS]
         Authelia[Authelia<br/>SSO/2FA]
-        
+
         subgraph DocBrain [DocBrain Compose Stack]
             Backend[FastAPI<br/>RAG + Agent]
             Web[Next.js 15<br/>веб-чат / админка]
@@ -21,7 +21,7 @@ graph TB
             DB[(PostgreSQL<br/>+ pgvector)]
             MinIO[MinIO<br/>S3-совместимое хранилище]
         end
-        
+
         Existing[Другие сервисы<br/>scan-agent, portainer, ...]
     end
 
@@ -43,20 +43,19 @@ graph TB
     style Backend fill:#2196F3
     style Web fill:#9C27B0
     style DB fill:#607D8B
+```
+
 Ключевые решения (согласно INFRA.md):
 
-PostgreSQL + pgvector – отдельный контейнер docbrain-db (изоляция от scan-agent).
+- **PostgreSQL + pgvector** – отдельный контейнер `docbrain-db` (изоляция от scan-agent).
+- **Веб-чат** – публичный, но с JWT-авторизацией на уровне FastAPI (Telegram-бот идентифицирует по `chat_id`).
+- **OpenRouter** – единый API-ключ для всех LLM (эмбеддинги + чат).
+- **n8n** – за Authelia, импорт документов из Google Drive (pull-mode по cron).
+- **MinIO** – используется существующий инстанс для хранения исходников файлов (бакет `docbrain-files`).
 
-Веб-чат – публичный, но с JWT-авторизацией на уровне FastAPI (Telegram-бот идентифицирует по chat_id).
+## 🗂 Структура репозитория
 
-OpenRouter – единый API‑ключ для всех LLM (эмбеддинги + чат).
-
-n8n – за Authelia, импорт документов из Google Drive (pull-mode по cron).
-
-MinIO – используется существующий инстанс для хранения исходников файлов (бакет docbrain-files).
-
-🗂 Структура репозитория
-text
+```text
 docbrain/
 ├── .github/
 │   └── workflows/
@@ -115,9 +114,13 @@ docbrain/
 ├── .env.example
 ├── Makefile
 └── README.md
-🧪 Тесты
-Backend (pytest)
-python
+```
+
+## 🧪 Тесты
+
+### Backend (pytest)
+
+```python
 # backend/tests/test_rag.py
 import pytest
 from app.rag.vector_store import search_similar
@@ -137,8 +140,11 @@ async def test_agent_search_tool():
     answer, sources = await run_agent("Сколько дней отпуска?")
     assert len(answer) > 0
     assert isinstance(sources, list)
-Frontend (Jest + React Testing Library)
-ts
+```
+
+### Frontend (Jest + React Testing Library)
+
+```ts
 // frontend/__tests__/Chat.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react';
 import Chat from '../components/Chat';
@@ -149,8 +155,11 @@ test('отправляет сообщение и получает ответ', a
   fireEvent.click(screen.getByText('Отправить'));
   expect(await screen.findByText(/ответ/i)).toBeInTheDocument();
 });
-Запуск тестов в CI
-yaml
+```
+
+### Запуск тестов в CI
+
+```yaml
 # .github/workflows/ci.yml
 name: CI
 on: [push, pull_request]
@@ -180,23 +189,29 @@ jobs:
         with:
           node-version: 20
       - run: cd frontend && npm ci && npm test
-🚀 Разворачивание на VPS (пошагово)
-Предварительные требования (уже выполнены согласно INFRA.md)
-VPS с Docker, Caddy, Authelia, MinIO, сетью home-codespaces_proxy.
+```
 
-Домены *.nikulshin-dev.online указывают на VPS.
+## 🚀 Разворачивание на VPS (пошагово)
 
-Доступ к code-server через code.nikulshin-dev.online.
+### Предварительные требования (уже выполнены согласно INFRA.md)
 
-Шаг 1. Создание бакета в MinIO
-bash
+- VPS с Docker, Caddy, Authelia, MinIO, сетью `home-codespaces_proxy`.
+- Домены `*.nikulshin-dev.online` указывают на VPS.
+- Доступ к code-server через `code.nikulshin-dev.online`.
+
+### Шаг 1. Создание бакета в MinIO
+
+```bash
 # через UI minio.nikulshin-dev.ru или CLI
 docker exec home-codespaces-minio-1 mc mb local/docbrain-files
 docker exec home-codespaces-minio-1 mc policy set download local/docbrain-files
-Шаг 2. Настройка переменных окружения
-Создайте /opt/home-codespaces/projects/docbrain/.env на основе .env.example:
+```
 
-ini
+### Шаг 2. Настройка переменных окружения
+
+Создайте `/opt/home-codespaces/projects/docbrain/.env` на основе `.env.example`:
+
+```ini
 # OpenRouter
 OPENROUTER_API_KEY=sk-or-v1-...
 EMBEDDING_MODEL=openai/text-embedding-3-small
@@ -225,10 +240,13 @@ N8N_ENCRYPTION_KEY=some-random-key
 GOOGLE_DRIVE_CLIENT_ID=xxx
 GOOGLE_DRIVE_CLIENT_SECRET=xxx
 GOOGLE_DRIVE_REFRESH_TOKEN=xxx
-Шаг 3. Подготовка docker-compose.yml для DocBrain
-Создайте /home/coder/projects/docbrain/docker-compose.yml:
+```
 
-yaml
+### Шаг 3. Подготовка docker-compose.yml для DocBrain
+
+Создайте `/home/coder/projects/docbrain/docker-compose.yml`:
+
+```yaml
 version: '3.8'
 
 networks:
@@ -289,10 +307,13 @@ services:
 volumes:
   pgdata_docbrain:
   n8n_data:
-Шаг 4. Обновление Caddyfile
-Добавьте в /opt/home-codespaces/Caddyfile:
+```
 
-caddy
+### Шаг 4. Обновление Caddyfile
+
+Добавьте в `/opt/home-codespaces/Caddyfile`:
+
+```caddy
 # DocBrain
 docbrain.nikulshin-dev.online {
     # Публичный webhook для Telegram (без Authelia)
@@ -314,26 +335,31 @@ n8n.nikulshin-dev.online {
     import authelia
     reverse_proxy docbrain-n8n:5678
 }
+```
+
 После правок:
 
-bash
+```bash
 docker exec home-codespaces-caddy-1 caddy reload --config /etc/caddy/Caddyfile
-Шаг 5. Запуск DocBrain
-bash
+```
+
+### Шаг 5. Запуск DocBrain
+
+```bash
 cd /home/coder/projects/docbrain
 docker-compose up -d --build
-Шаг 6. Настройка n8n workflow (Google Drive → импорт)
-Зайдите в https://n8n.nikulshin-dev.online (пройдите Authelia).
+```
 
-Добавьте credentials Google Drive OAuth2.
+### Шаг 6. Настройка n8n workflow (Google Drive → импорт)
 
-Импортируйте workflow из n8n/workflows/google_drive_sync.json (см. пример ниже).
-
-Активируйте workflow (каждые 6 часов).
+1. Зайдите в `https://n8n.nikulshin-dev.online` (пройдите Authelia).
+2. Добавьте credentials Google Drive OAuth2.
+3. Импортируйте workflow из `n8n/workflows/google_drive_sync.json` (см. пример ниже).
+4. Активируйте workflow (каждые 6 часов).
 
 Пример workflow (JSON):
 
-json
+```json
 {
   "name": "Google Drive to DocBrain",
   "nodes": [
@@ -361,13 +387,20 @@ json
     }
   ]
 }
-Шаг 7. Настройка Telegram webhook
-bash
+```
+
+### Шаг 7. Настройка Telegram webhook
+
+```bash
 curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
   -d "url=https://docbrain.nikulshin-dev.online/tg/webhook"
-⚙️ GitHub Actions CI/CD
-Файл .github/workflows/cd.yml
-yaml
+```
+
+## ⚙️ GitHub Actions CI/CD
+
+### Файл `.github/workflows/cd.yml`
+
+```yaml
 name: CD
 
 on:
@@ -412,8 +445,11 @@ jobs:
             https://webhook.nikulshin-dev.online/hooks/deploy-docbrain
         env:
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET_DOCBRAIN }}
-На VPS: обновление webhook/hooks.json
-json
+```
+
+### На VPS: обновление `webhook/hooks.json`
+
+```json
 {
   "id": "deploy-docbrain",
   "execute-command": "/opt/home-codespaces/webhook/deploy-docbrain.sh",
@@ -429,40 +465,40 @@ json
     }
   }
 }
-Скрипт deploy-docbrain.sh:
+```
 
-bash
+Скрипт `deploy-docbrain.sh`:
+
+```bash
 #!/bin/bash
 cd /opt/home-codespaces/projects/docbrain
 docker-compose pull docbrain-backend docbrain-web
 docker-compose up -d --no-deps docbrain-backend docbrain-web
-📊 Мониторинг и логи
-Логи backend: docker logs docbrain-backend -f
+```
 
-n8n логи: docker logs docbrain-n8n
+## 📊 Мониторинг и логи
 
-Caddy логи: docker exec home-codespaces-caddy-1 tail -f /var/log/caddy/access.log
+- Логи backend: `docker logs docbrain-backend -f`
+- n8n логи: `docker logs docbrain-n8n`
+- Caddy логи: `docker exec home-codespaces-caddy-1 tail -f /var/log/caddy/access.log`
+- MinIO метрики: через `minio.nikulshin-dev.ru`
 
-MinIO метрики: через minio.nikulshin-dev.ru
+## 🧭 Дальнейшие улучшения (roadmap)
 
-🧭 Дальнейшие улучшения (roadmap)
-Поддержка чата с историей сессий (сохранение в БД)
+- Поддержка чата с историей сессий (сохранение в БД)
+- Возможность загружать документы через веб-чат (уже есть MinIO)
+- Асинхронная фоновая обработка больших PDF (Celery + Redis)
+- Reranker (Cohere или cross-encoder) для повышения качества поиска
+- CI-пайплайн с интеграционными тестами на реальном LLM
+- Дашборд аналитики (количество запросов, тональность, популярные темы)
 
-Возможность загружать документы через веб-чат (уже есть MinIO)
+## 📝 Лицензия
 
-Асинхронная фоновая обработка больших PDF (Celery + Redis)
-
-Reranker (Cohere или cross-encoder) для повышения качества поиска
-
-CI-пайплайн с интеграционными тестами на реальном LLM
-
-Дашборд аналитики (количество запросов, тональность, популярные темы)
-
-📝 Лицензия
 MIT (можно свободно использовать в портфолио и коммерческих проектах).
 
-🙋 Контакты
-Автор: Дмитрий Никульшин
-Telegram: @nikulshin_dev
-GitHub: DNikulshin
-Портфолио: nikulshin-dev.ru
+## 🙋 Контакты
+
+- Автор: Дмитрий Никульшин
+- Telegram: [@nikulshin_dev](https://t.me/nikulshin_dev)
+- GitHub: [DNikulshin](https://github.com/DNikulshin)
+- Портфолио: [nikulshin-dev.ru](https://nikulshin-dev.ru)
