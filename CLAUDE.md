@@ -18,7 +18,9 @@ DocBrain — RAG-консультант по документации: FastAPI +
 
 ## Что сейчас работает
 
-Спринт 1 закрыт (2026-05-13). `docker-compose up -d --build` поднимает `docbrain-db` (PG16 + pgvector 0.8.2) и `docbrain-backend` (FastAPI 0.115). Эндпоинты `/health` и `/health/db` отвечают, alembic применил `0001_enable_pgvector`. Команды — в [docs/dev.md](docs/dev.md).
+Спринт 1 закрыт (2026-05-13). `docker-compose up -d --build` поднимает `docbrain-db` (PG16 + pgvector 0.8.2) и `docbrain-backend` (FastAPI 0.115). Эндпоинты `/health` и `/health/db` отвечают.
+
+Спринт 2 в работе. Шаг 2.1 закрыт (2026-05-13): миграция `0002_documents_and_chunks` создала таблицы `documents` и `chunks` с `vector(1536)` и HNSW-индексом под cosine; SQLAlchemy-модели `Document`/`Chunk` подключены в `Base.metadata`. Сервисов, роутеров и тестов на CRUD ещё нет. Следующий шаг — 2.2 (chunker). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
 
 ## Стиль работы
 

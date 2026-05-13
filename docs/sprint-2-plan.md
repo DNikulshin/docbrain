@@ -6,6 +6,24 @@
 
 **Почему без LLM сейчас:** нет `OPENROUTER_API_KEY` в `.env`, а откладывать data-layer ради ключа — терять время. Архитектура должна быть готова к замене заглушки одним коммитом.
 
+## Статус спринта
+
+- [x] **Шаг 2.1** — модели `Document`/`Chunk`, миграция `0002_documents_and_chunks` с HNSW-индексом. Закрыт 2026-05-13.
+- [ ] **Шаг 2.2** — chunker. ← следующий
+- [ ] **Шаг 2.3** — embedding service (stub).
+- [ ] **Шаг 2.4** — парсеры TXT/MD.
+- [ ] **Шаг 2.5** — сервисный слой documents.
+- [ ] **Шаг 2.6** — API /api/documents (включая лимит 10 МБ через `settings.max_upload_bytes`).
+- [ ] **Шаг 2.7** — retriever + /api/search.
+- [ ] **Шаг 2.8** — wrap up.
+
+## Решения, принятые в начале спринта (2026-05-13)
+
+- **Stub-first**, real OpenRouter — спринт 3. `EmbeddingService` — Protocol, `StubEmbeddingService` (sha256→нормализованный вектор), `OpenRouterEmbeddingService` — заготовка с `NotImplementedError`.
+- **Только текст в БД.** Оригинал файла (bytes) не складываем — пойдёт в MinIO в спринте 3. В `Chunk.text` — распарсенный текст.
+- **Hard delete.** DELETE документа физически удаляет `Document` и каскадно — `Chunk`-и (FK `ON DELETE CASCADE`).
+- **Лимит файла — 10 МБ**, валидация в API. Параметр `MAX_UPLOAD_BYTES` в `.env.example`, поле `settings.max_upload_bytes`.
+
 ## Источники истины
 
 - [decisions.md](decisions.md) — принятые решения.
