@@ -20,12 +20,14 @@ DocBrain — RAG-консультант по документации: FastAPI +
 
 Спринт 1 закрыт (2026-05-13). `docker-compose up -d --build` поднимает `docbrain-db` (PG16 + pgvector 0.8.2) и `docbrain-backend` (FastAPI 0.115). Эндпоинты `/health` и `/health/db` отвечают.
 
-Спринт 2 в работе. Шаги 2.1 и 2.2 закрыты (2026-05-13):
+Спринт 2 в работе. Шаги 2.1–2.4 закрыты:
 
-- **2.1** — миграция `0002_documents_and_chunks` создала таблицы `documents` и `chunks` с `vector(1536)` и HNSW-индексом под cosine; SQLAlchemy-модели `Document`/`Chunk` подключены в `Base.metadata`.
-- **2.2** — наивный char-based chunker [backend/app/rag/chunker.py](backend/app/rag/chunker.py): `split_text(text, size=800, overlap=100) -> list[str]`. Валидирует `size>0`, `0<=overlap<size` (raise `ValueError`). Реэкспорт из `app.rag`. 14 unit-тестов зелёные.
+- **2.1** (2026-05-13) — миграция `0002_documents_and_chunks` создала таблицы `documents` и `chunks` с `vector(1536)` и HNSW-индексом под cosine; SQLAlchemy-модели `Document`/`Chunk` подключены в `Base.metadata`.
+- **2.2** (2026-05-13) — наивный char-based chunker [backend/app/rag/chunker.py](backend/app/rag/chunker.py): `split_text(text, size=800, overlap=100) -> list[str]`. Валидирует `size>0`, `0<=overlap<size` (raise `ValueError`). Реэкспорт из `app.rag`.
+- **2.3** (2026-05-14) — embedding service [backend/app/rag/embeddings.py](backend/app/rag/embeddings.py): `EmbeddingService` Protocol, `StubEmbeddingService` (shake_256 → нормализованный вектор размерности `settings.embedding_dim`), `OpenRouterEmbeddingService` (заглушка с `NotImplementedError`), фабрика `get_embedding_service()` по `settings.embedding_provider`.
+- **2.4** (2026-05-14) — парсеры [backend/app/parsers/](backend/app/parsers/): `parse(filename, payload) -> str` с диспатчем по расширению (`.txt`/`.md`/`.markdown`), `parse_markdown` срезает YAML-frontmatter, `UnsupportedFormatError(ValueError)` на неизвестных расширениях.
 
-Сервисов, роутеров, парсеров и embedding'ов пока нет. Следующий шаг — 2.3 (embedding service: Protocol + StubEmbeddingService). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
+47 unit-тестов зелёные. Сервисов и роутеров пока нет. Следующий шаг — 2.5 (сервисный слой documents: `create_document`, `list/get/delete`). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
 
 ## Стиль работы
 

@@ -10,9 +10,9 @@
 
 - [x] **Шаг 2.1** — модели `Document`/`Chunk`, миграция `0002_documents_and_chunks` с HNSW-индексом. Закрыт 2026-05-13.
 - [x] **Шаг 2.2** — chunker (`app/rag/chunker.py:split_text`, 14 unit-тестов). Закрыт 2026-05-13. Сверх плана: валидации `ValueError` на `size<=0`, `overlap<0`, `overlap>=size`; реэкспорт `split_text` из `app.rag.__init__`.
-- [ ] **Шаг 2.3** — embedding service (stub). ← следующий
-- [ ] **Шаг 2.4** — парсеры TXT/MD.
-- [ ] **Шаг 2.5** — сервисный слой documents.
+- [x] **Шаг 2.3** — embedding service (`app/rag/embeddings.py`): `EmbeddingService` Protocol, `StubEmbeddingService` (shake_256 → нормализованный вектор размерности `settings.embedding_dim`), `OpenRouterEmbeddingService` с `NotImplementedError`, фабрика `get_embedding_service()` по `settings.embedding_provider`. 12 unit-тестов. Закрыт 2026-05-14.
+- [x] **Шаг 2.4** — парсеры TXT/MD (`app/parsers/`): `parse(filename, payload) -> str` с диспатчем по расширению (`.txt`/`.md`/`.markdown`), `parse_text` (utf-8 + `errors=replace`), `parse_markdown` со срезом YAML-frontmatter, `UnsupportedFormatError(ValueError)` для неизвестных расширений. 18 unit-тестов. Закрыт 2026-05-14.
+- [ ] **Шаг 2.5** — сервисный слой documents. ← следующий
 - [ ] **Шаг 2.6** — API /api/documents (включая лимит 10 МБ через `settings.max_upload_bytes`).
 - [ ] **Шаг 2.7** — retriever + /api/search.
 - [ ] **Шаг 2.8** — wrap up.
