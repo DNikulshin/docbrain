@@ -1,18 +1,16 @@
-from typing import Annotated
-
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import SessionDep
+from app.api.documents import router as documents_router
 from app.config import settings
-from app.db.session import get_session
-
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
 )
+
+app.include_router(documents_router, prefix="/api")
 
 
 @app.get("/health", tags=["system"])

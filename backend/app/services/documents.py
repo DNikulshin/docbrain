@@ -22,7 +22,7 @@ async def create_document(
     embedder: EmbeddingService | None = None,
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
-) -> Document:
+) -> tuple[Document, int]:
     text = parse(filename, payload)
 
     size = chunk_size if chunk_size is not None else settings.chunk_size
@@ -42,7 +42,7 @@ async def create_document(
     await session.flush()
     await session.commit()
     await session.refresh(document)
-    return document
+    return document, len(chunks_text)
 
 
 async def list_documents(

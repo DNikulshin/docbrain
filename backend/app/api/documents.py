@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
+
+from app.api.deps import EmbedderDep, SessionDep
+from app.config import settings
+from app.parsers import UnsupportedFormatError
+from app.schemas.document import DocumentCreatedRead, DocumentRead
+from app.services.documents import (
+    create_document,
+    delete_document,
+    get_document,
+    list_documents,
+)
+
+router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+@router.post(
+    "",
+    response_model=DocumentCreatedRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    session: SessionDep,
+    embedder: EmbedderDep,
+    file: Annotated[UploadFile, File(...)],
+) -> DocumentCreatedRead:
+    payload = await file.read()
+    if len(payload) > settings.max_upload_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"file exceeds limit of {settings.max_upload_bytes} bytes",
+        )
+
+    try:
+        document, chunks_count = await create_document(
+            session,
+            filename=file.filename or "unnamed",
+            content_type=file.content_type or "application/octet-stream",
+            payload=payload,
+            embedder=embedder,
+        )
+    except UnsupportedFormatError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(exc),
+        ) from exc
+
+    return DocumentCreatedRead(
+        id=document.id,
+        name=document.name,
+        content_type=document.content_type,
+        source=document.source,
+        created_at=document.created_at,
+        chunks_count=chunks_count,
+    )
+
+
+@router.get("", response_model=list[DocumentRead])
+async def list_documents_endpoint(
+    session: SessionDep,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> list[DocumentRead]:
+    documents = await list_documents(session, limit=limit, offset=offset)
+    return [DocumentRead.model_validate(doc) for doc in documents]
+
+
+@router.get("/{document_id}", response_model=DocumentRead)
+async def get_document_endpoint(
+    document_id: uuid.UUID,
+    session: SessionDep,
+) -> DocumentRead:
+    document = await get_document(session, document_id)
+    if document is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
+    return DocumentRead.model_validate(document)
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document_endpoint(
+    document_id: uuid.UUID,
+    session: SessionDep,
+) -> Response:
+    deleted = await delete_document(session, document_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

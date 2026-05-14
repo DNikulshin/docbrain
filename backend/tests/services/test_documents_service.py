@@ -35,7 +35,7 @@ async def _bump_created_at(session: AsyncSession, doc: Document, *, seconds_ago:
 async def test_create_document_persists_document_and_chunks(db_session: AsyncSession) -> None:
     payload = ("a" * 2000).encode("utf-8")
 
-    doc = await create_document(
+    doc, chunks_count = await create_document(
         db_session,
         filename="big.txt",
         content_type="text/plain",
@@ -47,6 +47,7 @@ async def test_create_document_persists_document_and_chunks(db_session: AsyncSes
     assert doc.name == "big.txt"
     assert doc.content_type == "text/plain"
     assert doc.source is None
+    assert chunks_count == 3
 
     chunks = (
         await db_session.scalars(
@@ -60,7 +61,7 @@ async def test_create_document_persists_document_and_chunks(db_session: AsyncSes
 
 
 async def test_create_document_short_text_single_chunk(db_session: AsyncSession) -> None:
-    doc = await create_document(
+    doc, chunks_count = await create_document(
         db_session,
         filename="tiny.txt",
         content_type="text/plain",
@@ -70,13 +71,14 @@ async def test_create_document_short_text_single_chunk(db_session: AsyncSession)
 
     chunks = (await db_session.scalars(select(Chunk).where(Chunk.document_id == doc.id))).all()
     assert len(chunks) == 1
+    assert chunks_count == 1
     assert chunks[0].text == "hello world"
 
 
 async def test_create_document_empty_payload_creates_doc_no_chunks(
     db_session: AsyncSession,
 ) -> None:
-    doc = await create_document(
+    doc, chunks_count = await create_document(
         db_session,
         filename="empty.txt",
         content_type="text/plain",
@@ -86,12 +88,13 @@ async def test_create_document_empty_payload_creates_doc_no_chunks(
 
     chunks = (await db_session.scalars(select(Chunk).where(Chunk.document_id == doc.id))).all()
     assert chunks == []
+    assert chunks_count == 0
 
 
 async def test_create_document_markdown_strips_frontmatter(db_session: AsyncSession) -> None:
     payload = b"---\ntitle: Test\n---\n# Hello\n\nBody text."
 
-    doc = await create_document(
+    doc, _ = await create_document(
         db_session,
         filename="note.md",
         content_type="text/markdown",
@@ -124,7 +127,7 @@ async def test_create_document_unsupported_format_raises(db_session: AsyncSessio
 
 
 async def test_list_documents_orders_by_created_at_desc(db_session: AsyncSession) -> None:
-    first = await create_document(
+    first, _ = await create_document(
         db_session,
         filename="first.txt",
         content_type="text/plain",
@@ -132,7 +135,7 @@ async def test_list_documents_orders_by_created_at_desc(db_session: AsyncSession
         embedder=_stub(),
     )
     await _bump_created_at(db_session, first, seconds_ago=10)
-    second = await create_document(
+    second, _ = await create_document(
         db_session,
         filename="second.txt",
         content_type="text/plain",
@@ -147,7 +150,7 @@ async def test_list_documents_orders_by_created_at_desc(db_session: AsyncSession
 
 
 async def test_list_documents_pagination(db_session: AsyncSession) -> None:
-    first = await create_document(
+    first, _ = await create_document(
         db_session,
         filename="a.txt",
         content_type="text/plain",
@@ -155,7 +158,7 @@ async def test_list_documents_pagination(db_session: AsyncSession) -> None:
         embedder=_stub(),
     )
     await _bump_created_at(db_session, first, seconds_ago=10)
-    second = await create_document(
+    second, _ = await create_document(
         db_session,
         filename="b.txt",
         content_type="text/plain",
@@ -170,7 +173,7 @@ async def test_list_documents_pagination(db_session: AsyncSession) -> None:
 
 
 async def test_get_document_returns_doc(db_session: AsyncSession) -> None:
-    doc = await create_document(
+    doc, _ = await create_document(
         db_session,
         filename="x.txt",
         content_type="text/plain",
@@ -188,7 +191,7 @@ async def test_get_document_missing_returns_none(db_session: AsyncSession) -> No
 
 
 async def test_delete_document_cascades_chunks(db_session: AsyncSession) -> None:
-    doc = await create_document(
+    doc, _ = await create_document(
         db_session,
         filename="del.txt",
         content_type="text/plain",

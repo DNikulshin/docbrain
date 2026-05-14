@@ -20,6 +20,10 @@ class DocumentRead(BaseModel):
     created_at: datetime
 
 
+class DocumentCreatedRead(DocumentRead):
+    chunks_count: int
+
+
 class ChunkRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
