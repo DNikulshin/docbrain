@@ -20,12 +20,13 @@ DocBrain — RAG-консультант по документации: FastAPI +
 
 Спринт 1 закрыт (2026-05-13). `docker-compose up -d --build` поднимает `docbrain-db` (PG16 + pgvector 0.8.2) и `docbrain-backend` (FastAPI 0.115). Эндпоинты `/health` и `/health/db` отвечают.
 
-Спринт 2 в работе. Шаги 2.1 и 2.2 закрыты (2026-05-13):
+Спринт 2 в работе. Шаги 2.1, 2.2 (2026-05-13) и 2.3 (2026-05-14) закрыты:
 
 - **2.1** — миграция `0002_documents_and_chunks` создала таблицы `documents` и `chunks` с `vector(1536)` и HNSW-индексом под cosine; SQLAlchemy-модели `Document`/`Chunk` подключены в `Base.metadata`.
 - **2.2** — наивный char-based chunker [backend/app/rag/chunker.py](backend/app/rag/chunker.py): `split_text(text, size=800, overlap=100) -> list[str]`. Валидирует `size>0`, `0<=overlap<size` (raise `ValueError`). Реэкспорт из `app.rag`. 14 unit-тестов зелёные.
+- **2.3** — embedding service [backend/app/rag/embeddings.py](backend/app/rag/embeddings.py): `EmbeddingService` Protocol + `StubEmbeddingService` (`shake_256` → L2-нормализованный `vector(settings.embedding_dim)`, детерминированно, без сетевых вызовов), заготовка `OpenRouterEmbeddingService` с `NotImplementedError` под спринт 3, фабрика `get_embedding_service()` по `settings.embedding_provider`. Реэкспорт из `app.rag`. 12 unit-тестов зелёные.
 
-Сервисов, роутеров, парсеров и embedding'ов пока нет. Следующий шаг — 2.3 (embedding service: Protocol + StubEmbeddingService). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
+Сервисов, роутеров и парсеров пока нет. Следующий шаг — 2.4 (парсеры TXT/MD: `app/parsers/{base,text,markdown}.py`, диспатч по расширению, `UnsupportedFormatError`). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
 
 ## Стиль работы
 

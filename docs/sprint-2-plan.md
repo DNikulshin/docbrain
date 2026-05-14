@@ -10,8 +10,8 @@
 
 - [x] **Шаг 2.1** — модели `Document`/`Chunk`, миграция `0002_documents_and_chunks` с HNSW-индексом. Закрыт 2026-05-13.
 - [x] **Шаг 2.2** — chunker (`app/rag/chunker.py:split_text`, 14 unit-тестов). Закрыт 2026-05-13. Сверх плана: валидации `ValueError` на `size<=0`, `overlap<0`, `overlap>=size`; реэкспорт `split_text` из `app.rag.__init__`.
-- [ ] **Шаг 2.3** — embedding service (stub). ← следующий
-- [ ] **Шаг 2.4** — парсеры TXT/MD.
+- [x] **Шаг 2.3** — embedding service (`app/rag/embeddings.py`: `EmbeddingService` Protocol, `StubEmbeddingService` через `shake_256` → L2-норм. `vector(embedding_dim)`, заготовка `OpenRouterEmbeddingService` с `NotImplementedError`, фабрика `get_embedding_service()`; 12 unit-тестов). Закрыт 2026-05-14. Сверх плана: алгоритм взят `shake_256` (XOF из stdlib) вместо повторных `sha256` — без новых зависимостей; реэкспорт из `app.rag.__init__`.
+- [ ] **Шаг 2.4** — парсеры TXT/MD. ← следующий
 - [ ] **Шаг 2.5** — сервисный слой documents.
 - [ ] **Шаг 2.6** — API /api/documents (включая лимит 10 МБ через `settings.max_upload_bytes`).
 - [ ] **Шаг 2.7** — retriever + /api/search.
