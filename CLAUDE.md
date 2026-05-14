@@ -20,7 +20,7 @@ DocBrain — RAG-консультант по документации: FastAPI +
 
 Спринт 1 закрыт (2026-05-13). `docker-compose up -d --build` поднимает `docbrain-db` (PG16 + pgvector 0.8.2) и `docbrain-backend` (FastAPI 0.115). Эндпоинты `/health` и `/health/db` отвечают.
 
-Спринт 2 в работе. Шаги 2.1–2.6 закрыты:
+Спринт 2 в работе. Шаги 2.1–2.7 закрыты:
 
 - **2.1** (2026-05-13) — миграция `0002_documents_and_chunks` создала таблицы `documents` и `chunks` с `vector(1536)` и HNSW-индексом под cosine; SQLAlchemy-модели `Document`/`Chunk` подключены в `Base.metadata`.
 - **2.2** (2026-05-13) — наивный char-based chunker [backend/app/rag/chunker.py](backend/app/rag/chunker.py): `split_text(text, size=800, overlap=100) -> list[str]`. Валидирует `size>0`, `0<=overlap<size` (raise `ValueError`). Реэкспорт из `app.rag`.
@@ -28,8 +28,9 @@ DocBrain — RAG-консультант по документации: FastAPI +
 - **2.4** (2026-05-14) — парсеры [backend/app/parsers/](backend/app/parsers/): `parse(filename, payload) -> str` с диспатчем по расширению (`.txt`/`.md`/`.markdown`), `parse_markdown` срезает YAML-frontmatter, `UnsupportedFormatError(ValueError)` на неизвестных расширениях.
 - **2.5** (2026-05-14) — сервисный слой [backend/app/services/documents.py](backend/app/services/documents.py): `create_document` склеивает `parse → split_text → embed → INSERT(Document + Chunks)` в одной транзакции; `list/get/delete_document` (каскадно). Pydantic v2 схемы — [backend/app/schemas/document.py](backend/app/schemas/document.py) (`DocumentCreate`, `DocumentRead`, `ChunkRead`). Integration-тесты — на живом `docbrain-db` через rollback-фикстуру (внешняя транзакция + `join_transaction_mode="create_savepoint"`, отдельный engine с `NullPool` чтобы обойти «event loop closed» в pytest-asyncio).
 - **2.6** (2026-05-14) — API [backend/app/api/documents.py](backend/app/api/documents.py): `POST /api/documents` (multipart, 201 → `DocumentCreatedRead` с `chunks_count`), `GET /api/documents?limit=&offset=`, `GET /api/documents/{id}`, `DELETE /api/documents/{id}` (204). Лимит 10 МБ — 413, неизвестный формат — 415. `create_document` теперь отдаёт `(Document, int)`. Зависимости (`SessionDep`, `EmbedderDep`) — в [backend/app/api/deps.py](backend/app/api/deps.py). API-тесты — `httpx.AsyncClient + ASGITransport` поверх той же rollback-фикстуры; `db_session` переехал из `tests/services/conftest.py` в [backend/tests/conftest.py](backend/tests/conftest.py). Добавлен `python-multipart` в `requirements.txt`.
+- **2.7** (2026-05-14) — retriever + поиск: [backend/app/rag/retriever.py](backend/app/rag/retriever.py) — `search(session, query_embedding, top_k) -> list[tuple[Chunk, float]]` через `Chunk.embedding.cosine_distance(q)` (оператор `<=>`, HNSW-индекс). Сервис [backend/app/services/search.py](backend/app/services/search.py) (`search_documents`) делает embed query → retriever. Роутер [backend/app/api/search.py](backend/app/api/search.py): `POST /api/search` body `{query, top_k}` → `list[SearchHit]`. Pydantic-схемы — [backend/app/schemas/search.py](backend/app/schemas/search.py) (`SearchRequest` с `min_length=1`, `top_k ∈ [1,50]`; `SearchHit` с `document_id/chunk_id/ord/text/distance`).
 
-68 тестов зелёные. Следующий шаг — 2.7 (retriever + `/api/search`). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
+77 тестов зелёные. Следующий шаг — 2.8 (wrap up). Детали — в [docs/sprint-2-plan.md](docs/sprint-2-plan.md). Команды — в [docs/dev.md](docs/dev.md).
 
 ## Стиль работы
 
