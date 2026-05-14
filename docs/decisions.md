@@ -2,6 +2,19 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-14 — Спринт 2 закрыт: data-flow без LLM
+
+- **Stub-first выбран, OpenRouter — спринт 3.** Хотя `OPENROUTER_API_KEY` доступен (см. запись от 2026-05-13), пошли stub-first: детерминированный `StubEmbeddingService` упрощает интеграционные тесты, заменяется на реальный клиент одним коммитом без правки клиентов (за это отвечает `EmbeddingService` Protocol + фабрика `get_embedding_service()` по `settings.embedding_provider`).
+- **`EMBEDDING_DIM=1536` зафиксирован в миграции `0002`.** Изменение размерности — только новой миграцией: pgvector не умеет ALTER `vector(N)` без пересоздания индекса.
+- **Метрика — cosine** (`vector_cosine_ops`, оператор `<=>`), HNSW-индекс на `chunks.embedding`. Параметры HNSW — дефолтные pgvector 0.8.2.
+- **Hard delete документов** (`ON DELETE CASCADE` на `chunks.document_id`). Soft delete отложен до появления пользовательских ролей.
+- **Только текст в БД.** Оригинал файла (bytes) не сохраняется, `Document.source` пока `NULL`. MinIO + `source = s3://...` — спринт 3.
+- **Лимит загрузки 10 МБ** (`settings.max_upload_bytes`), нарушение → 413. Неизвестное расширение → 415 (`UnsupportedFormatError`).
+- **`ChunkRead` без поля `embedding`.** Векторы не отдаём наружу: не нужны клиенту, раздувают payload, потенциальная утечка эмбеддинг-модели.
+- **Тестовая инфра — rollback-фикстура на живом `docbrain-db`:** внешняя транзакция + `join_transaction_mode="create_savepoint"`, отдельный engine с `NullPool` (иначе под pytest-asyncio ловим «event loop is closed»). Юниты — на чистую логику (chunker, парсеры, stub-embeddings).
+- **API-тесты — `httpx.AsyncClient` + `ASGITransport`, не `TestClient`.** `TestClient` крутит свой event loop, несовместимый с async-фикстурой rollback'а. Общая `db_session` живёт в `backend/tests/conftest.py`, чтобы её видели и `tests/api/`, и `tests/services/`.
+- **`POST /api/search` валидация:** `query` `min_length=1`, `top_k ∈ [1, 50]`. На stub-эмбеддингах query=text чанка даёт `distance≈0` — поиск детерминирован в тестах.
+
 ## 2026-05-13 — Готовность к спринту 2
 
 - **`OPENROUTER_API_KEY` доступен в `.env`** (положил пользователь после закрытия спринта 1). Это снимает блокер для реального RAG.
