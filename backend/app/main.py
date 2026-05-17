@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import structlog
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.api.deps import SessionDep
@@ -7,8 +9,11 @@ from app.api.search import router as search_router
 from app.config import settings
 from app.logging_config import configure_logging
 from app.middleware.request_context import RequestContextMiddleware
+from app.parsers import UnsupportedFormatError
 
 configure_logging(settings.log_level, settings.log_format)
+
+logger = structlog.get_logger(__name__)
 
 app = FastAPI(
     title=settings.app_name,
@@ -19,6 +24,35 @@ app.add_middleware(RequestContextMiddleware)
 
 app.include_router(documents_router, prefix="/api")
 app.include_router(search_router, prefix="/api")
+
+
+@app.exception_handler(UnsupportedFormatError)
+async def unsupported_format_handler(
+    _request: Request, exc: UnsupportedFormatError
+) -> JSONResponse:
+    logger.warning("unsupported_format", detail=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(_request: Request, exc: ValueError) -> JSONResponse:
+    logger.warning("value_error", detail=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(UnicodeDecodeError)
+async def unicode_decode_error_handler(_request: Request, exc: UnicodeDecodeError) -> JSONResponse:
+    logger.warning("unicode_decode_error", detail=str(exc))
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
 
 
 @app.get("/health", tags=["system"])

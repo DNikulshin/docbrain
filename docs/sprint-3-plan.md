@@ -26,7 +26,7 @@
 ## Статус спринта
 
 - [x] **Шаг 3.1** — структурированное логирование (`structlog` + middleware request_id).
-- [ ] **Шаг 3.2** — глобальные exception-handlers, маппинг `ValueError`/`UnicodeDecodeError` → 400.
+- [x] **Шаг 3.2** — глобальные exception-handlers, маппинг `ValueError`/`UnicodeDecodeError` → 400.
 - [ ] **Шаг 3.3** — реальный `OpenRouterEmbeddingService` + batch + retry.
 - [ ] **Шаг 3.4** — интеграция с MinIO, `Document.source`, `GET /api/documents/{id}/source`, `/health/minio`.
 - [ ] **Шаг 3.5** — парсеры PDF, DOCX, URL + `POST /api/documents/url`.
