@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,8 @@ from app.models.document import Chunk, Document
 from app.parsers import parse
 from app.rag.chunker import split_text
 from app.rag.embeddings import EmbeddingService, get_embedding_service
+
+logger = structlog.get_logger(__name__)
 
 
 async def create_document(
@@ -23,6 +26,8 @@ async def create_document(
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
 ) -> tuple[Document, int]:
+    logger.info("document_create_start", filename=filename, size=len(payload))
+
     text = parse(filename, payload)
 
     size = chunk_size if chunk_size is not None else settings.chunk_size
@@ -42,6 +47,8 @@ async def create_document(
     await session.flush()
     await session.commit()
     await session.refresh(document)
+
+    logger.info("document_create_done", document_id=str(document.id), chunks=len(chunks_text))
     return document, len(chunks_text)
 
 

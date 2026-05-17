@@ -21,6 +21,9 @@ class Settings(BaseSettings):
         description="Async SQLAlchemy URL, например postgresql+asyncpg://user:pass@host:5432/db",
     )
 
+    log_level: str = "INFO"
+    log_format: Literal["console", "json"] = "console"
+
     embedding_provider: Literal["stub", "openrouter"] = "stub"
     embedding_dim: int = 1536
     chunk_size: int = 800
