@@ -5,7 +5,9 @@ import uuid
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
+
+logger = structlog.get_logger(__name__)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -18,6 +20,14 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         )
         try:
             response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            return response
+        except Exception:
+            logger.exception("unhandled_exception")
+            response = JSONResponse(
+                status_code=500,
+                content={"detail": "Internal Server Error", "request_id": request_id},
+            )
             response.headers["X-Request-ID"] = request_id
             return response
         finally:

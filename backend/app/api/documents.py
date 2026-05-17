@@ -7,7 +7,6 @@ from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile,
 
 from app.api.deps import EmbedderDep, SessionDep
 from app.config import settings
-from app.parsers import UnsupportedFormatError
 from app.schemas.document import DocumentCreatedRead, DocumentRead
 from app.services.documents import (
     create_document,
@@ -36,19 +35,13 @@ async def upload_document(
             detail=f"file exceeds limit of {settings.max_upload_bytes} bytes",
         )
 
-    try:
-        document, chunks_count = await create_document(
-            session,
-            filename=file.filename or "unnamed",
-            content_type=file.content_type or "application/octet-stream",
-            payload=payload,
-            embedder=embedder,
-        )
-    except UnsupportedFormatError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=str(exc),
-        ) from exc
+    document, chunks_count = await create_document(
+        session,
+        filename=file.filename or "unnamed",
+        content_type=file.content_type or "application/octet-stream",
+        payload=payload,
+        embedder=embedder,
+    )
 
     return DocumentCreatedRead(
         id=document.id,
