@@ -2,6 +2,12 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-18 — Спринт 3, шаги 3.1–3.3: логирование, ошибки, OpenRouter
+
+- **`structlog` + request_id middleware (3.1).** `configure_logging()` собирает процессоры; `LOG_FORMAT=json` → `JSONRenderer`, иначе `ConsoleRenderer`. `RequestContextMiddleware` генерит UUID4 `request_id`, биндит в `structlog.contextvars`, возвращает в `X-Request-ID`. Catch-all exception handler перенесён в middleware (а не в `@app.exception_handler(Exception)`) — потому что Starlette 0.41+ ищет handler по точному типу, подклассы не ловит.
+- **Глобальные exception-handlers (3.2).** `UnsupportedFormatError` → 415, `ValueError` → 400, `UnicodeDecodeError` → 400; catch-all в middleware → 500 с `request_id` в теле.
+- **`OpenRouterEmbeddingService` (3.3).** `httpx.AsyncClient`, батчи по `EMBEDDING_BATCH_SIZE=96`, экспоненциальный backoff `0.5 * 2^attempt` на 5xx/429, до `OPENROUTER_RETRIES=2` ретраев. Несовпадение размерности ответа → `EmbeddingProviderError`. Фабрика `get_embedding_service()` делает fast-fail с `RuntimeError` если `OPENROUTER_API_KEY=None`. Transport инжектируется через `_transport` в конструкторе — для тестов без сети (mock через `httpx.AsyncBaseTransport`).
+
 ## 2026-05-14 — Спринт 2 закрыт: data-flow без LLM
 
 - **Stub-first выбран, OpenRouter — спринт 3.** Хотя `OPENROUTER_API_KEY` доступен (см. запись от 2026-05-13), пошли stub-first: детерминированный `StubEmbeddingService` упрощает интеграционные тесты, заменяется на реальный клиент одним коммитом без правки клиентов (за это отвечает `EmbeddingService` Protocol + фабрика `get_embedding_service()` по `settings.embedding_provider`).
