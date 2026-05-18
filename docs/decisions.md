@@ -2,6 +2,17 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-18 — Спринт 3, шаг 3.4: MinIO
+
+- **`aiobotocore[boto3]`** как async S3-клиент. Нативный async без `asyncio.to_thread`.
+- **Два клиента в `lifespan`:** `client` на `MINIO_ENDPOINT` (internal, для put/head/delete/health), `pub_client` на `MINIO_PUBLIC_ENDPOINT` (для `generate_presigned_url` — чтобы URL был публичным). Оба создаются через `AsyncExitStack`-подобный вложенный `async with`.
+- **`generate_presigned_url` — синхронный метод** (`def`, не `async def`). В aiobotocore это HMAC-подпись без сетевого вызова. `StorageProtocol` и все реализации (`MinioStorage`, `StubStorage`) определяют его как `def`.
+- **`Document.source = "s3://docbrain-files/{doc_id}/{filename}"`**. `doc_id` генерируется ДО `put_object`, чтобы использовать в ключе S3. Если MinIO не настроен — `source` остаётся `NULL`, приложение стартует без ошибок.
+- **`GET /api/documents/{id}/source` → 302** на presigned URL. Если `source is None` или документ не найден → 404; если storage не сконфигурирован → 503.
+- **`DELETE /api/documents/{id}` удаляет объект из MinIO best-effort:** после удаления строки из БД, ошибка S3 → `logger.warning`, не исключение.
+- **`StubStorage` (in-memory dict) в `dependency_overrides`** для всех API-тестов — MinIO не нужен при `pytest`. Integration-тесты (`tests/storage/test_minio.py`, `@pytest.mark.integration`) создают временный бакет и скипаются без `MINIO_ACCESS_KEY`.
+- **`/health/minio`** — `HeadBucket` через внутренний клиент; возвращает `{"status": "not_configured"}` если MinIO не задан.
+
 ## 2026-05-18 — Спринт 3, шаги 3.1–3.3: логирование, ошибки, OpenRouter
 
 - **`structlog` + request_id middleware (3.1).** `configure_logging()` собирает процессоры; `LOG_FORMAT=json` → `JSONRenderer`, иначе `ConsoleRenderer`. `RequestContextMiddleware` генерит UUID4 `request_id`, биндит в `structlog.contextvars`, возвращает в `X-Request-ID`. Catch-all exception handler перенесён в middleware (а не в `@app.exception_handler(Exception)`) — потому что Starlette 0.41+ ищет handler по точному типу, подклассы не ловит.
