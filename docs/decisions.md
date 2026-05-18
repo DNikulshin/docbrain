@@ -2,6 +2,17 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-18 — Спринт 4 закрыт: n8n / Google Drive sync
+
+- **`POST /api/import/gdrive`** — отдельный endpoint (не расширять `/api/documents`). Принимает `multipart/form-data`: `file` (бинарник) + `file_id` (строка). `source_id = "gdrive:{file_id}"` → дедупликация.
+- **Replace semantics:** при повторном импорте с тем же `file_id` — старый Document удаляется (`delete_document` → CASCADE чанки, MinIO best-effort), затем создаётся новый. Ответ: `{"status": "replaced"|"created", "document": {...}}`.
+- **`source_id` в Document** — `VARCHAR UNIQUE NULL`, миграция `0003`. NULL в UNIQUE-колонке PostgreSQL валиден (несколько строк с NULL допустимы).
+- **`X-API-Key` auth** — `DOCBRAIN_API_KEY` в `settings`; если не задан → dev mode без auth. Проверяется только на `/api/import/*`. FastAPI автоматически конвертирует `X-API-Key` → параметр `x_api_key` в `Header()`.
+- **n8n контейнер** — `n8nio/n8n:latest`, volume `n8n_data`, сеть `proxy`. `DOCBRAIN_API_KEY` пробрасывается как env, доступен в workflow через `{{$env.DOCBRAIN_API_KEY}}`.
+- **n8n workflow** — pull-mode (schedule `0 */6 * * *`): List Drive Files → Filter MIME → Download (Google Docs → export DOCX) → POST `/api/import/gdrive`. Folder ID задаётся через Variables в n8n UI. Google Drive OAuth2 credentials хранятся в зашифрованном томе n8n.
+- **`import_.py`** — имя файла с подчёркиванием во избежание конфликта с Python builtin `import`.
+- **116 тестов, 5 skipped** (MinIO integration без ключа).
+
 ## 2026-05-18 — Спринт 3 закрыт: парсеры PDF/DOCX/URL
 
 - **`pypdf` / `python-docx` / `trafilatura`** — три отдельных парсера. `parse_pdf` и `parse_docx` принимают `bytes`, возвращают `str`. `parse_url(url, http, max_bytes)` — async, стриминговый GET с лимитом размера, диспатч по `Content-Type` (html → trafilatura, pdf → `parse_pdf`, docx → `parse_docx`, text/plain → utf-8 decode).
