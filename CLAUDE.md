@@ -22,7 +22,7 @@ DocBrain — RAG-консультант по документации: FastAPI +
 
 Спринт 2 закрыт (2026-05-14). `POST /api/documents` (multipart, TXT/MD, лимит 10 МБ) парсит → чанкует → эмбеддит (stub) → пишет `Document` + `Chunk`-и в одной транзакции; `GET/DELETE /api/documents[/{id}]` для CRUD. `POST /api/search` — top-k по cosine через HNSW. 77 тестов зелёные (unit + integration на живой БД + API через `httpx.AsyncClient + ASGITransport`).
 
-Спринт 3 в процессе — [docs/sprint-3-plan.md](docs/sprint-3-plan.md). Шаги 3.1–3.3 закрыты (2026-05-18): structlog + request_id middleware, глобальные exception-handlers (`ValueError`/`UnicodeDecodeError` → 400), реальный `OpenRouterEmbeddingService` с batch+retry. 89 тестов зелёные. Следующий — шаг 3.4: MinIO (`aiobotocore`, бакет `docbrain-files`). Без n8n, фронта, Telegram, CI/CD. Архитектурные решения — в [docs/decisions.md](docs/decisions.md). Команды — в [docs/dev.md](docs/dev.md).
+Спринт 3 в процессе — [docs/sprint-3-plan.md](docs/sprint-3-plan.md). Шаги 3.1–3.4 закрыты (2026-05-18): structlog + request_id middleware, глобальные exception-handlers (`ValueError`/`UnicodeDecodeError` → 400), реальный `OpenRouterEmbeddingService` с batch+retry, MinIO (`aiobotocore`, `StorageProtocol`/`MinioStorage`/`StubStorage`, lifespan, `Document.source`, `GET /api/documents/{id}/source` → 302, `/health/minio`). 92 теста зелёные. Следующий — шаг 3.5: парсеры PDF/DOCX/URL. Без n8n, фронта, Telegram, CI/CD. Архитектурные решения — в [docs/decisions.md](docs/decisions.md). Команды — в [docs/dev.md](docs/dev.md).
 
 ## Стиль работы
 
