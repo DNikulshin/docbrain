@@ -29,8 +29,8 @@
 - [x] **Шаг 3.2** — глобальные exception-handlers, маппинг `ValueError`/`UnicodeDecodeError` → 400.
 - [x] **Шаг 3.3** — реальный `OpenRouterEmbeddingService` + batch + retry.
 - [x] **Шаг 3.4** — интеграция с MinIO, `Document.source`, `GET /api/documents/{id}/source`, `/health/minio`.
-- [ ] **Шаг 3.5** — парсеры PDF, DOCX, URL + `POST /api/documents/url`.
-- [ ] **Шаг 3.6** — wrap up (decisions.md, CLAUDE.md, статус).
+- [x] **Шаг 3.5** — парсеры PDF, DOCX, URL + `POST /api/documents/url`.
+- [x] **Шаг 3.6** — wrap up (decisions.md, CLAUDE.md, статус).
 
 ---
 

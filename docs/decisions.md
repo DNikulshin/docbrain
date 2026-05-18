@@ -2,6 +2,14 @@
 
 Журнал принятых решений с датами. Новые записи — сверху.
 
+## 2026-05-18 — Спринт 3 закрыт: парсеры PDF/DOCX/URL
+
+- **`pypdf` / `python-docx` / `trafilatura`** — три отдельных парсера. `parse_pdf` и `parse_docx` принимают `bytes`, возвращают `str`. `parse_url(url, http, max_bytes)` — async, стриминговый GET с лимитом размера, диспатч по `Content-Type` (html → trafilatura, pdf → `parse_pdf`, docx → `parse_docx`, text/plain → utf-8 decode).
+- **`POST /api/documents/url`** — новый эндпоинт, body `{"url": "HttpUrl"}`. Оригинал льётся в MinIO под ключом `url/{document_id}/{filename}`, `Document.source = "s3://docbrain-files/url/{doc_id}/{filename}"`. Та же цепочка: parse → chunk → embed → write.
+- **Маршрут `/url` зарегистрирован до `/{document_id}`** в роутере — иначе FastAPI матчит строку `"url"` как UUID-параметр и отдаёт 422.
+- **Маркер `integration`** добавлен в `pyproject.toml` (`markers = ["integration: ..."]`); MinIO-тесты скипаются без `MINIO_ACCESS_KEY`.
+- **111 тестов, 5 skipped** (MinIO integration без ключа) — `ruff check . && pytest -v` зелёные внутри `docbrain-backend`.
+
 ## 2026-05-18 — Спринт 3, шаг 3.4: MinIO
 
 - **`aiobotocore[boto3]`** как async S3-клиент. Нативный async без `asyncio.to_thread`.
