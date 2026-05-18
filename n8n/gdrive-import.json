@@ -1,0 +1,201 @@
+{
+  "name": "Google Drive → DocBrain Import",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000002",
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 480]
+    },
+    {
+      "parameters": {
+        "operation": "filesList",
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $vars.GDRIVE_FOLDER_ID }}",
+          "mode": "id"
+        },
+        "options": {
+          "fields": "id,name,mimeType,modifiedTime"
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000003",
+      "name": "List Drive Files",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [460, 390],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive (DocBrain)"
+        }
+      },
+      "notes": "Настройте: Credentials → Google Drive (DocBrain) OAuth2.\nПапка Google Drive задаётся через Variables: GDRIVE_FOLDER_ID."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "combinator": "or"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/pdf",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "text/plain",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "text/markdown",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "application/vnd.google-apps.document",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000004",
+      "name": "Filter supported types",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 390]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000005",
+      "name": "Download File",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [900, 390],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "name": "Google Drive (DocBrain)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://docbrain-backend:8000/api/import/gdrive",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.DOCBRAIN_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $('Filter supported types').item.json.id }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          }
+        }
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000006",
+      "name": "POST to DocBrain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 390],
+      "onError": "continueRegularOutput",
+      "notes": "X-API-Key берётся из env-переменной DOCBRAIN_API_KEY контейнера n8n.\nПри ошибке одного файла — продолжает обработку остальных."
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [{ "node": "List Drive Files", "type": "main", "index": 0 }]
+      ]
+    },
+    "Every 6 hours": {
+      "main": [
+        [{ "node": "List Drive Files", "type": "main", "index": 0 }]
+      ]
+    },
+    "List Drive Files": {
+      "main": [
+        [{ "node": "Filter supported types", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter supported types": {
+      "main": [
+        [{ "node": "Download File", "type": "main", "index": 0 }]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [{ "node": "POST to DocBrain", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["docbrain", "gdrive"],
+  "triggerCount": 1,
+  "versionId": "1"
+}
