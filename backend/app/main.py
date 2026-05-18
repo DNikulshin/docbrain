@@ -8,6 +8,7 @@ from sqlalchemy import text
 
 from app.api.deps import SessionDep
 from app.api.documents import router as documents_router
+from app.api.import_ import router as import_router
 from app.api.search import router as search_router
 from app.config import settings
 from app.logging_config import configure_logging
@@ -57,6 +58,7 @@ app = FastAPI(
 app.add_middleware(RequestContextMiddleware)
 
 app.include_router(documents_router, prefix="/api")
+app.include_router(import_router, prefix="/api")
 app.include_router(search_router, prefix="/api")
 
 

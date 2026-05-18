@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict
@@ -35,3 +36,8 @@ class ChunkRead(BaseModel):
     document_id: UUID
     ord: int
     text: str
+
+
+class GdriveImportRead(BaseModel):
+    status: Literal["created", "replaced"]
+    document: DocumentCreatedRead

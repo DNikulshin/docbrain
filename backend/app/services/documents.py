@@ -26,6 +26,7 @@ async def create_document(
     embedder: EmbeddingService | None = None,
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
+    source_id: str | None = None,
 ) -> tuple[Document, int]:
     logger.info("document_create_start", filename=filename, size=len(payload))
 
@@ -45,7 +46,9 @@ async def create_document(
         await storage.put_object(key, payload, content_type)
         source = f"s3://{settings.minio_bucket}/{key}"
 
-    document = Document(id=doc_id, name=filename, content_type=content_type, source=source)
+    document = Document(
+        id=doc_id, name=filename, content_type=content_type, source=source, source_id=source_id
+    )
     session.add(document)
     for ord_, (chunk_text, vector) in enumerate(zip(chunks_text, vectors, strict=True)):
         document.chunks.append(
@@ -143,3 +146,38 @@ async def delete_document(
             logger.warning("storage_delete_failed", key=key)
 
     return True
+
+
+async def import_gdrive_document(
+    session: AsyncSession,
+    *,
+    filename: str,
+    content_type: str,
+    payload: bytes,
+    source_id: str,
+    storage: StorageProtocol | None = None,
+    embedder: EmbeddingService | None = None,
+) -> tuple[Document, int, str]:
+    stmt = select(Document).where(Document.source_id == source_id)
+    existing = await session.scalar(stmt)
+    import_status = "replaced" if existing is not None else "created"
+
+    if existing is not None:
+        await delete_document(session, existing.id, storage=storage)
+
+    document, chunks_count = await create_document(
+        session,
+        filename=filename,
+        content_type=content_type,
+        payload=payload,
+        source_id=source_id,
+        storage=storage,
+        embedder=embedder,
+    )
+    logger.info(
+        "gdrive_import_done",
+        document_id=str(document.id),
+        source_id=source_id,
+        status=import_status,
+    )
+    return document, chunks_count, import_status
