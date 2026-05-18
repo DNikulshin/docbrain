@@ -60,6 +60,50 @@ async def create_document(
     return document, len(chunks_text)
 
 
+async def create_document_from_url(
+    session: AsyncSession,
+    *,
+    url: str,
+    text: str,
+    filename: str,
+    content_type: str,
+    raw_bytes: bytes,
+    storage: StorageProtocol | None = None,
+    embedder: EmbeddingService | None = None,
+    chunk_size: int | None = None,
+    chunk_overlap: int | None = None,
+) -> tuple[Document, int]:
+    logger.info("document_url_create_start", url=url, size=len(raw_bytes))
+
+    size = chunk_size if chunk_size is not None else settings.chunk_size
+    overlap = chunk_overlap if chunk_overlap is not None else settings.chunk_overlap
+    chunks_text = split_text(text, size=size, overlap=overlap)
+
+    embedder = embedder if embedder is not None else get_embedding_service()
+    vectors = await embedder.embed(chunks_text)
+
+    doc_id = uuid.uuid4()
+    source: str | None = None
+    if storage is not None:
+        key = f"url/{doc_id}/{filename}"
+        await storage.put_object(key, raw_bytes, content_type)
+        source = f"s3://{settings.minio_bucket}/{key}"
+
+    document = Document(id=doc_id, name=filename, content_type=content_type, source=source)
+    session.add(document)
+    for ord_, (chunk_text, vector) in enumerate(zip(chunks_text, vectors, strict=True)):
+        document.chunks.append(
+            Chunk(ord=ord_, text=chunk_text, embedding=vector),
+        )
+
+    await session.flush()
+    await session.commit()
+    await session.refresh(document)
+
+    logger.info("document_url_create_done", document_id=str(document.id), chunks=len(chunks_text))
+    return document, len(chunks_text)
+
+
 async def list_documents(
     session: AsyncSession,
     *,

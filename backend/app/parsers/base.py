@@ -3,7 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
+from app.parsers.docx import parse_docx
 from app.parsers.markdown import parse_markdown
+from app.parsers.pdf import parse_pdf
 from app.parsers.text import parse_text
 
 
@@ -15,6 +17,8 @@ _PARSERS: dict[str, Callable[[bytes], str]] = {
     ".txt": parse_text,
     ".md": parse_markdown,
     ".markdown": parse_markdown,
+    ".pdf": parse_pdf,
+    ".docx": parse_docx,
 }
 
 

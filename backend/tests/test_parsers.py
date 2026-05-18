@@ -1,6 +1,98 @@
+import io
+
+import docx as _docx
+import pypdf
 import pytest
 
-from app.parsers import UnsupportedFormatError, parse, parse_markdown, parse_text
+from app.parsers import (
+    UnsupportedFormatError,
+    parse,
+    parse_docx,
+    parse_markdown,
+    parse_pdf,
+    parse_text,
+)
+
+
+def _make_pdf(text: str) -> bytes:
+    writer = pypdf.PdfWriter()
+    page = writer.add_blank_page(width=200, height=200)
+    page.merge_page(pypdf.PageObject.create_blank_page(width=200, height=200))
+    buf = io.BytesIO()
+    writer.write(buf)
+    return buf.getvalue()
+
+
+def _make_pdf_with_text(text: str) -> bytes:
+    """Minimal valid PDF with embedded text via direct content stream."""
+    content = b"BT /F1 12 Tf 50 700 Td (" + text.encode("latin-1", errors="replace") + b") Tj ET"
+    resources = b"<< /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >>"
+    page_obj = (
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]"
+        b" /Contents 4 0 R /Resources " + resources + b" >>"
+    )
+    pdf = (
+        b"%PDF-1.4\n"
+        b"1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
+        b"2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n"
+        b"3 0 obj " + page_obj + b" endobj\n"
+        b"4 0 obj << /Length "
+        + str(len(content)).encode()
+        + b" >>\nstream\n"
+        + content
+        + b"\nendstream endobj\n"
+        b"xref\n0 5\n"
+        b"0000000000 65535 f \n"
+        b"0000000009 00000 n \n"
+        b"0000000058 00000 n \n"
+        b"0000000115 00000 n \n"
+        b"0000000274 00000 n \n"
+        b"trailer << /Size 5 /Root 1 0 R >>\nstartxref\n400\n%%EOF"
+    )
+    return pdf
+
+
+def _make_docx(text: str) -> bytes:
+    doc = _docx.Document()
+    doc.add_paragraph(text)
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+def test_parse_pdf_returns_str():
+    payload = _make_pdf("ignored")
+    result = parse_pdf(payload)
+    assert isinstance(result, str)
+
+
+def test_parse_docx_returns_text():
+    payload = _make_docx("Hello from DOCX")
+    result = parse_docx(payload)
+    assert "Hello from DOCX" in result
+
+
+def test_parse_docx_multiple_paragraphs():
+    doc = _docx.Document()
+    doc.add_paragraph("First")
+    doc.add_paragraph("Second")
+    buf = io.BytesIO()
+    doc.save(buf)
+    result = parse_docx(buf.getvalue())
+    assert "First" in result
+    assert "Second" in result
+
+
+def test_parse_dispatch_pdf():
+    payload = _make_pdf("test")
+    result = parse("file.pdf", payload)
+    assert isinstance(result, str)
+
+
+def test_parse_dispatch_docx():
+    payload = _make_docx("test content")
+    result = parse("report.docx", payload)
+    assert "test content" in result
 
 
 def test_parse_text_ascii():

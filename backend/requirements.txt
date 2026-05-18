@@ -9,3 +9,6 @@ alembic==1.14.0
 pgvector==0.3.6
 structlog==24.4.0
 aiobotocore[boto3]==2.15.2
+pypdf>=5.0
+python-docx>=1.1
+trafilatura>=2.0

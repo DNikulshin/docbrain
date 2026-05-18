@@ -6,11 +6,13 @@ from typing import Annotated
 from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import RedirectResponse
 
-from app.api.deps import EmbedderDep, SessionDep, StorageDep
+from app.api.deps import EmbedderDep, HttpClientDep, SessionDep, StorageDep
 from app.config import settings
-from app.schemas.document import DocumentCreatedRead, DocumentRead
+from app.parsers.url import parse_url
+from app.schemas.document import DocumentCreatedRead, DocumentRead, UrlIngest
 from app.services.documents import (
     create_document,
+    create_document_from_url,
     delete_document,
     get_document,
     list_documents,
@@ -42,6 +44,46 @@ async def upload_document(
         filename=file.filename or "unnamed",
         content_type=file.content_type or "application/octet-stream",
         payload=payload,
+        storage=storage,
+        embedder=embedder,
+    )
+
+    return DocumentCreatedRead(
+        id=document.id,
+        name=document.name,
+        content_type=document.content_type,
+        source=document.source,
+        created_at=document.created_at,
+        chunks_count=chunks_count,
+    )
+
+
+@router.post(
+    "/url",
+    response_model=DocumentCreatedRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def ingest_url(
+    body: UrlIngest,
+    session: SessionDep,
+    embedder: EmbedderDep,
+    storage: StorageDep,
+    http: HttpClientDep,
+) -> DocumentCreatedRead:
+    try:
+        text, raw_bytes, filename, content_type = await parse_url(
+            str(body.url), http, settings.max_upload_bytes
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    document, chunks_count = await create_document_from_url(
+        session,
+        url=str(body.url),
+        text=text,
+        filename=filename,
+        content_type=content_type,
+        raw_bytes=raw_bytes,
         storage=storage,
         embedder=embedder,
     )

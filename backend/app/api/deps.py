@@ -1,5 +1,7 @@
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
+import httpx
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,3 +18,11 @@ def get_storage(request: Request) -> StorageProtocol | None:
 
 
 StorageDep = Annotated[StorageProtocol | None, Depends(get_storage)]
+
+
+async def get_http_client() -> AsyncGenerator[httpx.AsyncClient, None]:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
+        yield client
+
+
+HttpClientDep = Annotated[httpx.AsyncClient, Depends(get_http_client)]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict
 
 
 class DocumentCreate(BaseModel):
@@ -22,6 +22,10 @@ class DocumentRead(BaseModel):
 
 class DocumentCreatedRead(DocumentRead):
     chunks_count: int
+
+
+class UrlIngest(BaseModel):
+    url: AnyHttpUrl
 
 
 class ChunkRead(BaseModel):
