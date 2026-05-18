@@ -79,13 +79,15 @@ def test_get_embedding_service_returns_stub_by_default():
     assert isinstance(svc, EmbeddingService)
 
 
-def test_get_embedding_service_openrouter_returns_stub_class(monkeypatch):
+def test_get_embedding_service_openrouter_no_key_raises(monkeypatch):
     monkeypatch.setattr(settings, "embedding_provider", "openrouter")
+    monkeypatch.setattr(settings, "openrouter_api_key", None)
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        get_embedding_service()
+
+
+def test_get_embedding_service_openrouter_with_key_returns_instance(monkeypatch):
+    monkeypatch.setattr(settings, "embedding_provider", "openrouter")
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-test")
     svc = get_embedding_service()
     assert isinstance(svc, OpenRouterEmbeddingService)
-
-
-async def test_openrouter_embed_raises_not_implemented():
-    svc = OpenRouterEmbeddingService()
-    with pytest.raises(NotImplementedError, match="sprint 3"):
-        await svc.embed(["anything"])

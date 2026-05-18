@@ -30,5 +30,12 @@ class Settings(BaseSettings):
     chunk_overlap: int = 100
     max_upload_bytes: int = 10 * 1024 * 1024
 
+    openrouter_api_key: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_embedding_model: str = "openai/text-embedding-3-small"
+    openrouter_timeout: float = 30.0
+    openrouter_retries: int = 2
+    embedding_batch_size: int = 96
+
 
 settings = Settings()
