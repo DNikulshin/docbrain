@@ -37,5 +37,12 @@ class Settings(BaseSettings):
     openrouter_retries: int = 2
     embedding_batch_size: int = 96
 
+    minio_endpoint: str | None = None
+    minio_public_endpoint: str | None = None
+    minio_access_key: str | None = None
+    minio_secret_key: str | None = None
+    minio_bucket: str = "docbrain-files"
+    minio_presign_ttl_sec: int = 3600
+
 
 settings = Settings()

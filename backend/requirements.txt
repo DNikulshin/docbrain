@@ -8,3 +8,4 @@ asyncpg==0.30.0
 alembic==1.14.0
 pgvector==0.3.6
 structlog==24.4.0
+aiobotocore[boto3]==2.15.2

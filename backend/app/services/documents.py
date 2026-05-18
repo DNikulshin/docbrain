@@ -11,6 +11,7 @@ from app.models.document import Chunk, Document
 from app.parsers import parse
 from app.rag.chunker import split_text
 from app.rag.embeddings import EmbeddingService, get_embedding_service
+from app.storage.minio import StorageProtocol
 
 logger = structlog.get_logger(__name__)
 
@@ -21,7 +22,7 @@ async def create_document(
     filename: str,
     content_type: str,
     payload: bytes,
-    source: str | None = None,
+    storage: StorageProtocol | None = None,
     embedder: EmbeddingService | None = None,
     chunk_size: int | None = None,
     chunk_overlap: int | None = None,
@@ -37,7 +38,14 @@ async def create_document(
     embedder = embedder if embedder is not None else get_embedding_service()
     vectors = await embedder.embed(chunks_text)
 
-    document = Document(name=filename, content_type=content_type, source=source)
+    doc_id = uuid.uuid4()
+    source: str | None = None
+    if storage is not None:
+        key = f"{doc_id}/{filename}"
+        await storage.put_object(key, payload, content_type)
+        source = f"s3://{settings.minio_bucket}/{key}"
+
+    document = Document(id=doc_id, name=filename, content_type=content_type, source=source)
     session.add(document)
     for ord_, (chunk_text, vector) in enumerate(zip(chunks_text, vectors, strict=True)):
         document.chunks.append(
@@ -73,10 +81,21 @@ async def get_document(
 async def delete_document(
     session: AsyncSession,
     document_id: uuid.UUID,
+    storage: StorageProtocol | None = None,
 ) -> bool:
     document = await session.get(Document, document_id)
     if document is None:
         return False
+
+    source = document.source
     await session.delete(document)
     await session.commit()
+
+    if storage is not None and source and source.startswith("s3://"):
+        key = source.removeprefix(f"s3://{settings.minio_bucket}/")
+        try:
+            await storage.delete_object(key)
+        except Exception:
+            logger.warning("storage_delete_failed", key=key)
+
     return True

@@ -139,3 +139,32 @@ async def test_delete_document_cascades_and_returns_204(
 async def test_delete_document_missing_returns_404(async_client: AsyncClient) -> None:
     response = await async_client.delete(f"/api/documents/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+async def test_post_document_sets_source(async_client: AsyncClient) -> None:
+    files = {"file": ("doc.txt", b"hello", "text/plain")}
+    response = await async_client.post("/api/documents", files=files)
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["source"] is not None
+    assert body["source"].startswith("s3://docbrain-files/")
+    assert body["source"].endswith("/doc.txt")
+
+
+async def test_get_document_source_redirects(async_client: AsyncClient) -> None:
+    created = await async_client.post(
+        "/api/documents", files={"file": ("x.txt", b"x", "text/plain")}
+    )
+    doc_id = created.json()["id"]
+
+    response = await async_client.get(f"/api/documents/{doc_id}/source", follow_redirects=False)
+    assert response.status_code == 302
+    assert "stub" in response.headers["location"]
+
+
+async def test_get_document_source_no_source_returns_404(async_client: AsyncClient) -> None:
+    response = await async_client.get(
+        f"/api/documents/{uuid.uuid4()}/source", follow_redirects=False
+    )
+    assert response.status_code == 404

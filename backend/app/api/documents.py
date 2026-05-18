@@ -4,8 +4,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile, status
+from fastapi.responses import RedirectResponse
 
-from app.api.deps import EmbedderDep, SessionDep
+from app.api.deps import EmbedderDep, SessionDep, StorageDep
 from app.config import settings
 from app.schemas.document import DocumentCreatedRead, DocumentRead
 from app.services.documents import (
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 async def upload_document(
     session: SessionDep,
     embedder: EmbedderDep,
+    storage: StorageDep,
     file: Annotated[UploadFile, File(...)],
 ) -> DocumentCreatedRead:
     payload = await file.read()
@@ -40,6 +42,7 @@ async def upload_document(
         filename=file.filename or "unnamed",
         content_type=file.content_type or "application/octet-stream",
         payload=payload,
+        storage=storage,
         embedder=embedder,
     )
 
@@ -63,6 +66,25 @@ async def list_documents_endpoint(
     return [DocumentRead.model_validate(doc) for doc in documents]
 
 
+@router.get("/{document_id}/source", status_code=302)
+async def get_document_source(
+    document_id: uuid.UUID,
+    session: SessionDep,
+    storage: StorageDep,
+) -> RedirectResponse:
+    document = await get_document(session, document_id)
+    if document is None or document.source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="source not found")
+    if storage is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="storage not configured",
+        )
+    key = document.source.removeprefix(f"s3://{settings.minio_bucket}/")
+    url = storage.generate_presigned_url(key, ttl=settings.minio_presign_ttl_sec)
+    return RedirectResponse(url, status_code=302)
+
+
 @router.get("/{document_id}", response_model=DocumentRead)
 async def get_document_endpoint(
     document_id: uuid.UUID,
@@ -78,8 +100,9 @@ async def get_document_endpoint(
 async def delete_document_endpoint(
     document_id: uuid.UUID,
     session: SessionDep,
+    storage: StorageDep,
 ) -> Response:
-    deleted = await delete_document(session, document_id)
+    deleted = await delete_document(session, document_id, storage=storage)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="document not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
