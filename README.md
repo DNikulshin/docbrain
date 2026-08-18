@@ -501,4 +501,4 @@ MIT (можно свободно использовать в портфолио 
 - Автор: Дмитрий Никульшин
 - Telegram: [@nikulshin_dev](https://t.me/nikulshin_dev)
 - GitHub: [DNikulshin](https://github.com/DNikulshin)
-- Портфолио: [nikulshin-dev.ru](https://nikulshin-dev.ru)
+- Портфолио: [nikulshin-dev.ru](https://dnikulshin.ru)
