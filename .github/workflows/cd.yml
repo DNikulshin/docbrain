@@ -7,7 +7,7 @@ on:
       - 'backend/**'
       - 'docker-compose.yml'
       - '.github/workflows/cd.yml'
-  workflow_dispatch:   # ручной запуск (для тега или форсированного билда)
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -23,6 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
