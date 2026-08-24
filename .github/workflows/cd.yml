@@ -2,16 +2,16 @@ name: Build and Push Image
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'backend/**'
-      - 'docker-compose.yml'
-      - '.github/workflows/cd.yml'
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/cd.yml"
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/backend
+  IMAGE_NAME: dnikulshin/docbrain/backend # <--- ИСПРАВЛЕНО (нижний регистр)
 
 jobs:
   build-and-push:
