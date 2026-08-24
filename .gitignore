@@ -46,3 +46,5 @@ docker-compose.override.yml
 
 # Alembic — миграции коммитим, кэш нет
 backend/alembic/__pycache__/
+
+repomix-output.md
