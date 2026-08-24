@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint-and-test:
@@ -31,13 +31,12 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           cd backend
-          pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
       - name: Lint (ruff)
@@ -51,4 +50,4 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost:5432/test
         run: |
           cd backend
-          pytest -v --cov=app
+          pytest tests/ -v --cov=app
