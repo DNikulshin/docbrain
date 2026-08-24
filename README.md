@@ -3,6 +3,12 @@
 [![CI](https://github.com/DNikulshin/docbrain/actions/workflows/ci.yml/badge.svg)](https://github.com/DNikulshin/docbrain/actions/workflows/ci.yml)
 [![CD](https://github.com/DNikulshin/docbrain/actions/workflows/cd.yml/badge.svg)](https://github.com/DNikulshin/docbrain/actions/workflows/cd.yml)
 
+🌐 **Live Demo:** [https://backend-latest-2ax3.onrender.com](https://backend-latest-2ax3.onrender.com)  
+📚 **API Docs (Swagger UI):** [https://backend-latest-2ax3.onrender.com/docs](https://backend-latest-2ax3.onrender.com/docs)  
+🩺 **Healthcheck:** [https://backend-latest-2ax3.onrender.com/health](https://backend-latest-2ax3.onrender.com/health)
+
+---
+
 > **DocBrain** — production-ready система для автоматического ответа на вопросы по корпоративной документации.  
 > Сочетает RAG (pgvector), agent с function calling, синхронизацию документов через n8n (Google Drive), веб-чат на Next.js, Telegram бота и админку.  
 > Проект закрывает пробел в портфолио fullstack/AI-интегратора и может быть показан заказчикам.
@@ -46,24 +52,25 @@ graph TB
     style Backend fill:#2196F3
     style Web fill:#9C27B0
     style DB fill:#607D8B
-```
-
 Ключевые решения (согласно INFRA.md):
 
-- **PostgreSQL + pgvector** – отдельный контейнер `docbrain-db` (изоляция от scan-agent).
-- **Веб-чат** – публичный, но с JWT-авторизацией на уровне FastAPI (Telegram-бот идентифицирует по `chat_id`).
-- **OpenRouter** – единый API-ключ для всех LLM (эмбеддинги + чат).
-- **n8n** – за Authelia, импорт документов из Google Drive (pull-mode по cron).
-- **MinIO** – используется существующий инстанс для хранения исходников файлов (бакет `docbrain-files`).
+PostgreSQL + pgvector – отдельный контейнер docbrain-db (изоляция от scan-agent).
 
-## 🗂 Структура репозитория
+Веб-чат – публичный, но с JWT-авторизацией на уровне FastAPI (Telegram-бот идентифицирует по chat_id).
 
-```text
+OpenRouter – единый API-ключ для всех LLM (эмбеддинги + чат).
+
+n8n – за Authelia, импорт документов из Google Drive (pull-mode по cron).
+
+MinIO – используется существующий инстанс для хранения исходников файлов (бакет docbrain-files).
+
+🗂 Структура репозитория
+text
 docbrain/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                  # тесты, линтинг, сборка
-│       └── cd.yml                  # деплой на VPS через webhook
+│       └── cd.yml                  # сборка образа в GHCR
 ├── backend/
 │   ├── app/
 │   │   ├── __init__.py
@@ -117,20 +124,14 @@ docbrain/
 ├── .env.example
 ├── Makefile
 └── README.md
-```
-
-## 🔌 Примеры использования API
-
-### Загрузка документа (TXT)
-
-```bash
+🔌 Примеры использования API
+Загрузка документа (TXT)
+bash
 curl -X POST http://localhost:8000/api/documents \
   -F "file=@example.txt"
-```
-
 Ответ:
 
-```json
+json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "example.txt",
@@ -139,19 +140,14 @@ curl -X POST http://localhost:8000/api/documents \
   "created_at": "2026-05-18T12:00:00Z",
   "chunks_count": 1
 }
-```
-
-### Поиск по запросу
-
-```bash
+Поиск по запросу
+bash
 curl -X POST http://localhost:8000/api/search \
-  -H "Content-Type: application/json" \
+  -H "Content-Type": "application/json" \
   -d '{"query": "политика отпусков", "top_k": 3}'
-```
-
 Ответ:
 
-```json
+json
 [
   {
     "document_id": "550e8400-e29b-41d4-a716-446655440000",
@@ -161,23 +157,19 @@ curl -X POST http://localhost:8000/api/search \
     "distance": 0.123
   }
 ]
-```
-
-### Загрузка документа по URL
-
-```bash
+Загрузка документа по URL
+bash
 curl -X POST http://localhost:8000/api/documents/url \
-  -H "Content-Type: application/json" \
+  -H "Content-Type": "application/json" \
   -d '{"url": "https://example.com/document.pdf"}'
-```
-
 Ответ аналогичен загрузке файла.
 
-## 🧪 Тесты
+📸 Пример работы API
+https://docs/swagger-upload.png
 
-### Backend (pytest)
-
-```python
+🧪 Тесты
+Backend (pytest)
+python
 # backend/tests/test_rag.py
 import pytest
 from app.rag.vector_store import search_similar
@@ -197,11 +189,8 @@ async def test_agent_search_tool():
     answer, sources = await run_agent("Сколько дней отпуска?")
     assert len(answer) > 0
     assert isinstance(sources, list)
-```
-
-### Frontend (Jest + React Testing Library)
-
-```ts
+Frontend (Jest + React Testing Library)
+ts
 // frontend/__tests__/Chat.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react';
 import Chat from '../components/Chat';
@@ -212,11 +201,8 @@ test('отправляет сообщение и получает ответ', a
   fireEvent.click(screen.getByText('Отправить'));
   expect(await screen.findByText(/ответ/i)).toBeInTheDocument();
 });
-```
-
-### Запуск тестов в CI
-
-```yaml
+Запуск тестов в CI
+yaml
 # .github/workflows/ci.yml
 name: CI
 on: [push, pull_request]
@@ -246,85 +232,25 @@ jobs:
         with:
           node-version: 20
       - run: cd frontend && npm ci && npm test
-```
+🚀 Разворачивание на VPS (пошагово)
+Этот раздел опционален и предназначен для продакшн-развёртывания на подготовленной инфраструктуре (VPS с Caddy, Authelia, MinIO). Если у вас нет такой инфраструктуры, вы можете использовать инструкции из раздела «🐳 Развёртывание образа (без VPS)».
 
-## 🔌 Примеры использования API
+Предварительные требования (уже выполнены согласно INFRA.md)
+VPS с Docker, Caddy, Authelia, MinIO, сетью home-codespaces_proxy.
 
-### Загрузка документа (TXT)
+Домены *.nikulshin-dev.online указывают на VPS.
 
-```bash
-curl -X POST http://localhost:8000/api/documents \
-  -F "file=@example.txt"
-```
+Доступ к code-server через code.nikulshin-dev.online.
 
-Ответ:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "example.txt",
-  "content_type": "text/plain",
-  "source": "s3://docbrain-files/.../example.txt",
-  "created_at": "2026-05-18T12:00:00Z",
-  "chunks_count": 1
-}
-```
-
-### Поиск по запросу
-
-```bash
-curl -X POST http://localhost:8000/api/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "политика отпусков", "top_k": 3}'
-```
-
-Ответ:
-
-```json
-[
-  {
-    "document_id": "550e8400-e29b-41d4-a716-446655440000",
-    "chunk_id": "550e8400-e29b-41d4-a716-446655440001",
-    "ord": 0,
-    "text": "Политика отпусков: 28 календарных дней...",
-    "distance": 0.123
-  }
-]
-```
-
-### Загрузка документа по URL
-
-```bash
-curl -X POST http://localhost:8000/api/documents/url \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com/document.pdf"}'
-```
-
-Ответ аналогичен загрузке файла.
-
-## 🚀 Разворачивание на VPS (пошагово)
-
-> **Этот раздел опционален** и предназначен для продакшн-развёртывания на подготовленной инфраструктуре (VPS с Caddy, Authelia, MinIO). Если у вас нет такой инфраструктуры, вы можете использовать инструкции из раздела «🐳 Развёртывание образа (без VPS)».
-
-### Предварительные требования (уже выполнены согласно INFRA.md)
-
-- VPS с Docker, Caddy, Authelia, MinIO, сетью `home-codespaces_proxy`.
-- Домены `*.nikulshin-dev.online` указывают на VPS.
-- Доступ к code-server через `code.nikulshin-dev.online`.
-
-### Шаг 1. Создание бакета в MinIO
-
-```bash
+Шаг 1. Создание бакета в MinIO
+bash
 # через UI minio.nikulshin-dev.ru или CLI
 docker exec home-codespaces-minio-1 mc mb local/docbrain-files
 docker exec home-codespaces-minio-1 mc policy set download local/docbrain-files
-```
+Шаг 2. Настройка переменных окружения
+Создайте /opt/home-codespaces/projects/docbrain/.env на основе .env.example:
 
-### Шаг 2. Настройка переменных окружения
-
-Создайте `/opt/home-codespaces/projects/docbrain/.env` на основе `.env.example`:
-
-```ini
+ini
 # OpenRouter
 OPENROUTER_API_KEY=sk-or-v1-...
 EMBEDDING_MODEL=openai/text-embedding-3-small
@@ -353,13 +279,10 @@ N8N_ENCRYPTION_KEY=some-random-key
 GOOGLE_DRIVE_CLIENT_ID=xxx
 GOOGLE_DRIVE_CLIENT_SECRET=xxx
 GOOGLE_DRIVE_REFRESH_TOKEN=xxx
-```
+Шаг 3. Подготовка docker-compose.yml для DocBrain
+Создайте /home/coder/projects/docbrain/docker-compose.yml:
 
-### Шаг 3. Подготовка docker-compose.yml для DocBrain
-
-Создайте `/home/coder/projects/docbrain/docker-compose.yml`:
-
-```yaml
+yaml
 version: "3.8"
 
 networks:
@@ -420,13 +343,10 @@ services:
 volumes:
   pgdata_docbrain:
   n8n_data:
-```
+Шаг 4. Обновление Caddyfile
+Добавьте в /opt/home-codespaces/Caddyfile:
 
-### Шаг 4. Обновление Caddyfile
-
-Добавьте в `/opt/home-codespaces/Caddyfile`:
-
-```caddy
+caddy
 # DocBrain
 docbrain.nikulshin-dev.online {
     # Публичный webhook для Telegram (без Authelia)
@@ -448,31 +368,26 @@ n8n.nikulshin-dev.online {
     import authelia
     reverse_proxy docbrain-n8n:5678
 }
-```
-
 После правок:
 
-```bash
+bash
 docker exec home-codespaces-caddy-1 caddy reload --config /etc/caddy/Caddyfile
-```
-
-### Шаг 5. Запуск DocBrain
-
-```bash
+Шаг 5. Запуск DocBrain
+bash
 cd /home/coder/projects/docbrain
 docker-compose up -d --build
-```
+Шаг 6. Настройка n8n workflow (Google Drive → импорт)
+Зайдите в https://n8n.nikulshin-dev.online (пройдите Authelia).
 
-### Шаг 6. Настройка n8n workflow (Google Drive → импорт)
+Добавьте credentials Google Drive OAuth2.
 
-1. Зайдите в `https://n8n.nikulshin-dev.online` (пройдите Authelia).
-2. Добавьте credentials Google Drive OAuth2.
-3. Импортируйте workflow из `n8n/workflows/google_drive_sync.json` (см. пример ниже).
-4. Активируйте workflow (каждые 6 часов).
+Импортируйте workflow из n8n/workflows/google_drive_sync.json (см. пример ниже).
+
+Активируйте workflow (каждые 6 часов).
 
 Пример workflow (JSON):
 
-```json
+json
 {
   "name": "Google Drive to DocBrain",
   "nodes": [
@@ -503,20 +418,13 @@ docker-compose up -d --build
     }
   ]
 }
-```
-
-### Шаг 7. Настройка Telegram webhook
-
-```bash
+Шаг 7. Настройка Telegram webhook
+bash
 curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
   -d "url=https://docbrain.nikulshin-dev.online/tg/webhook"
-```
-
-## ⚙️ GitHub Actions CI/CD
-
-### Файл `.github/workflows/cd.yml` (сборка образа в GHCR)
-
-```yaml
+⚙️ GitHub Actions CI/CD
+Файл .github/workflows/cd.yml (сборка образа в GHCR)
+yaml
 name: Build and Push Image
 
 on:
@@ -530,7 +438,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/backend
+  IMAGE_NAME: dnikulshin/docbrain/backend
 
 jobs:
   build-and-push:
@@ -542,6 +450,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -560,84 +473,73 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-```
-
-Этот пайплайн **не требует VPS** — он только собирает образ и публикует его в GitHub Container Registry. Вы можете скачать и запустить его где угодно (локально, на любом облаке).  
+Этот пайплайн не требует VPS — он только собирает образ и публикует его в GitHub Container Registry. Вы можете скачать и запустить его где угодно (локально, на любом облаке).
 Если у вас есть VPS, вы можете добавить шаг с webhook-деплоем (пример закомментирован в репозитории).
 
-## 🐳 Развёртывание образа (без VPS)
-
+🐳 Развёртывание образа (без VPS)
 Образ публикуется в GitHub Container Registry. Вы можете запустить его локально или на любом сервере с Docker.
 
-### Шаг 1. Скачать образ
-
-```bash
+Шаг 1. Скачать образ
+bash
 docker pull ghcr.io/dnikulshin/docbrain/backend:latest
-```
-
-### Шаг 2. Поднять PostgreSQL с pgvector
-
-```bash
+Шаг 2. Поднять PostgreSQL с pgvector
+bash
 docker run -d --name docbrain-db \
   -e POSTGRES_USER=docbrain \
   -e POSTGRES_PASSWORD=securepassword \
   -e POSTGRES_DB=docbrain \
   pgvector/pgvector:pg16
-```
-
-### Шаг 3. Запустить backend
-
-```bash
+Шаг 3. Запустить backend
+bash
 docker run -d --name docbrain-backend \
   -p 8000:8000 \
   -e DATABASE_URL="postgresql+asyncpg://docbrain:securepassword@docbrain-db:5432/docbrain" \
   --link docbrain-db \
   ghcr.io/dnikulshin/docbrain/backend:latest
-```
-
-### Шаг 4. Проверить работу
-
-```bash
+Шаг 4. Проверить работу
+bash
 curl http://localhost:8000/health
-```
+Ожидаемый ответ: {"status":"ok","service":"docbrain-backend","version":"0.1.0","environment":"development"}
 
-Ожидаемый ответ: `{"status":"ok","service":"docbrain-backend","version":"0.1.0","environment":"development"}`
+Запуск через docker-compose (локально)
+В корне репозитория уже есть docker-compose.yml. Для локального запуска с образами из GHCR можно использовать:
 
-### Запуск через docker-compose (локально)
-
-В корне репозитория уже есть `docker-compose.yml`. Для локального запуска с образами из GHCR можно использовать:
-
-```bash
+bash
 docker-compose up -d
-```
+Переменные окружения задаются в файле .env (скопируйте .env.example и заполните).
 
-Переменные окружения задаются в файле `.env` (скопируйте `.env.example` и заполните).
+Примечание: При локальном запуске MinIO, n8n и другие интеграции не будут работать, если они не настроены. Для тестирования RAG достаточно PostgreSQL и OpenRouter API-ключа (если вы используете реальные эмбеддинги, установите EMBEDDING_PROVIDER=openrouter и укажите OPENROUTER_API_KEY).
 
-> **Примечание:** При локальном запуске MinIO, n8n и другие интеграции не будут работать, если они не настроены. Для тестирования RAG достаточно PostgreSQL и OpenRouter API-ключа (если вы используете реальные эмбеддинги, установите `EMBEDDING_PROVIDER=openrouter` и укажите `OPENROUTER_API_KEY`).
+📊 Мониторинг и логи
+Логи backend: docker logs docbrain-backend -f
 
-## 📊 Мониторинг и логи
+n8n логи: docker logs docbrain-n8n
 
-- Логи backend: `docker logs docbrain-backend -f`
-- n8n логи: `docker logs docbrain-n8n`
-- Caddy логи: `docker exec home-codespaces-caddy-1 tail -f /var/log/caddy/access.log`
-- MinIO метрики: через `minio.nikulshin-dev.ru`
+Caddy логи: docker exec home-codespaces-caddy-1 tail -f /var/log/caddy/access.log
 
-## 🧭 Дальнейшие улучшения (roadmap)
+MinIO метрики: через minio.nikulshin-dev.ru
 
-- Поддержка чата с историей сессий (сохранение в БД)
-- Возможность загружать документы через веб-чат (уже есть MinIO)
-- Асинхронная фоновая обработка больших PDF (Celery + Redis)
-- Reranker (Cohere или cross-encoder) для повышения качества поиска
-- CI-пайплайн с интеграционными тестами на реальном LLM
-- Дашборд аналитики (количество запросов, тональность, популярные темы)
+🧭 Дальнейшие улучшения (roadmap)
+Поддержка чата с историей сессий (сохранение в БД)
 
-## 📝 Лицензия
+Возможность загружать документы через веб-чат (уже есть MinIO)
 
+Асинхронная фоновая обработка больших PDF (Celery + Redis)
+
+Reranker (Cohere или cross-encoder) для повышения качества поиска
+
+CI-пайплайн с интеграционными тестами на реальном LLM
+
+Дашборд аналитики (количество запросов, тональность, популярные темы)
+
+📝 Лицензия
 MIT (можно свободно использовать в портфолио и коммерческих проектах).
 
-## 🙋 Контакты
+🙋 Контакты
+Автор: Дмитрий Никульшин
 
-- Автор: Дмитрий Никульшин
-- Telegram: [@nikulshin_dev](https://t.me/nikulshin_dev)
-- GitHub: [DNikulshin](https://github.com/DNikulshin)
-- Портфолио: [dnikulshin.ru](https://dnikulshin.ru)
+Telegram: @nikulshin_dev
+
+GitHub: DNikulshin
+
+Портфолио: dnikulshin.ru
