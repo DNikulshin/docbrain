@@ -50,6 +50,16 @@ RAG · Agent with function calling · n8n · Telegram · Next.js
 ## Архитектура
 
 ```mermaid
+flowchart LR
+    Docs[PDF / Markdown / Notion] --> Chunking[Adaptive Semantic Chunking 512t]
+    Chunking --> Embeddings[text-embedding-3 / multilingual-e5]
+    Embeddings --> PGVector[(PostgreSQL + pgvector HNSW)]
+    Query[Запрос пользователя] --> Hybrid[Гибридный поиск: BM25 + Cosine]
+    Hybrid --> Rerank[Reranker Cohere / Cross-Encoder]
+    Rerank --> LLM[Claude 3.5 Sonnet / GPT-4o с цитированием]
+```
+
+```mermaid
 graph TB
     subgraph VPS ["VPS · nikulshin-dev.online"]
         Caddy["Caddy<br/>reverse proxy + HTTPS"]
